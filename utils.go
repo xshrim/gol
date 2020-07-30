@@ -183,6 +183,94 @@ func colorRequestMethod(mtd string) string {
 	return string(buff)
 }
 
+func map2json(dst []byte, fds F) []byte {
+	for k, v := range fds {
+		// append key
+		dst = appendKey(dst, k)
+
+		// append value
+		switch val := v.(type) {
+		case string:
+			dst = appendStr(dst, val)
+		case []string:
+			dst = appendStrs(dst, val)
+		case []byte:
+			dst = appendBytes(dst, val)
+		case error:
+			dst = appendStr(dst, val.Error())
+		case bool:
+			dst = appendBool(dst, val)
+		case []bool:
+			dst = appendBools(dst, val)
+		case int:
+			dst = appendInt(dst, val)
+		case []int:
+			dst = appendInts(dst, val)
+		case int8:
+			dst = appendInt8(dst, val)
+		case []int8:
+			dst = appendInts8(dst, val)
+		case int16:
+			dst = appendInt16(dst, val)
+		case []int16:
+			dst = appendInts16(dst, val)
+		case int32:
+			dst = appendInt32(dst, val)
+		case []int32:
+			dst = appendInts32(dst, val)
+		case int64:
+			dst = appendInt64(dst, val)
+		case []int64:
+			dst = appendInts64(dst, val)
+		case uint:
+			dst = appendUint(dst, val)
+		case []uint:
+			dst = appendUints(dst, val)
+		case uint8:
+			dst = appendUint8(dst, val)
+		case uint16:
+			dst = appendUint16(dst, val)
+		case []uint16:
+			dst = appendUints16(dst, val)
+		case uint32:
+			dst = appendUint32(dst, val)
+		case []uint32:
+			dst = appendUints32(dst, val)
+		case uint64:
+			dst = appendUint64(dst, val)
+		case []uint64:
+			dst = appendUints64(dst, val)
+		case float32:
+			dst = appendFloat32(dst, val)
+		case []float32:
+			dst = appendFloats32(dst, val)
+		case float64:
+			dst = appendFloat64(dst, val)
+		case []float64:
+			dst = appendFloats64(dst, val)
+		case time.Time:
+			dst = appendTime(dst, val, time.RFC3339)
+		case []time.Time:
+			dst = appendTimes(dst, val, time.RFC3339)
+		case time.Duration:
+			dst = appendDuration(dst, val, time.Millisecond)
+		case []time.Duration:
+			dst = appendDurations(dst, val, time.Millisecond)
+		case interface{}:
+			dst = appendInterface(dst, val)
+		case net.IP:
+			dst = appendIPAddr(dst, val)
+		case net.IPNet:
+			dst = appendIPPrefix(dst, val)
+		case net.HardwareAddr:
+			dst = appendMACAddr(dst, val)
+		default:
+			dst = appendObject(dst, val)
+		}
+	}
+	return dst
+}
+
 // convert data to json-like []byte
 func tojson(dst []byte, v interface{}) []byte {
 	switch val := v.(type) {

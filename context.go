@@ -14,7 +14,7 @@ type Context struct {
 
 // create context with the fields and loggers
 func NewContext(fd F, loggers ...*Logger) *Context {
-	ctx := &Context{loggers: nil, buf: tojson(nil, fd)}
+	ctx := &Context{loggers: nil, buf: map2json(nil, fd)}
 	for _, l := range loggers {
 		ctx.loggers = append(ctx.loggers, l)
 	}
@@ -55,7 +55,7 @@ func (c *Context) Field(fd F) *Context {
 		return c
 	}
 
-	c.buf = tojson(c.buf, fd)
+	c.buf = map2json(c.buf, fd)
 	return c
 }
 

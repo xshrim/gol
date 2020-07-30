@@ -462,7 +462,7 @@ func (l *Logger) With(fd F) *Context {
 	// 	if len(fd) == 0 {
 	// 		return &Context{loggers: []*Logger{l}, buf: nil}
 	// 	} else {
-	return &Context{loggers: []*Logger{l}, buf: tojson(nil, fd)}
+	return &Context{loggers: []*Logger{l}, buf: map2json(nil, fd)}
 	// 	}
 }
 
@@ -471,7 +471,7 @@ func (l *Logger) WithSafe(fd F) *SafeContext {
 	// if len(fd) == 0 {
 	// 	return &SafeContext{loggers: []*Logger{l}, buf: nil}
 	// } else {
-	return &SafeContext{loggers: []*Logger{l}, buf: tojson(nil, fd)}
+	return &SafeContext{loggers: []*Logger{l}, buf: map2json(nil, fd)}
 	// }
 }
 

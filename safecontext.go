@@ -17,7 +17,7 @@ type SafeContext struct {
 
 // create thread-safe context with the fields and loggers
 func NewSafeContext(fd F, loggers ...*Logger) *SafeContext {
-	ctx := &SafeContext{loggers: nil, buf: tojson(nil, fd)}
+	ctx := &SafeContext{loggers: nil, buf: map2json(nil, fd)}
 	for _, l := range loggers {
 		ctx.loggers = append(ctx.loggers, l)
 	}
@@ -62,7 +62,7 @@ func (c *SafeContext) Field(fd F) *SafeContext {
 		return c
 	}
 
-	c.buf = tojson(c.buf, fd)
+	c.buf = map2json(c.buf, fd)
 	return c
 }
 

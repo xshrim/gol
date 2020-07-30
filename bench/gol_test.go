@@ -14,7 +14,7 @@ import (
 // 带level
 // 10个域上下文
 
-func Benchmarkgol(b *testing.B) {
+func BenchmarkGol(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(gol.Ldefault).Writer(file)
 
@@ -24,7 +24,7 @@ func Benchmarkgol(b *testing.B) {
 	}
 }
 
-func BenchmarkgolFormat(b *testing.B) {
+func BenchmarkGolFormat(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(gol.Ldefault).Writer(file)
 
@@ -34,7 +34,7 @@ func BenchmarkgolFormat(b *testing.B) {
 	}
 }
 
-func BenchmarkgolDiscardWriter(b *testing.B) {
+func BenchmarkGolDiscardWriter(b *testing.B) {
 	gol.Flag(gol.Ldefault).Writer(ioutil.Discard)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -42,7 +42,7 @@ func BenchmarkgolDiscardWriter(b *testing.B) {
 	}
 }
 
-func BenchmarkgolWithoutFlags(b *testing.B) {
+func BenchmarkGolWithoutFlags(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(0).Writer(file)
 
@@ -52,7 +52,7 @@ func BenchmarkgolWithoutFlags(b *testing.B) {
 	}
 }
 
-func BenchmarkgolWithDebugLevel(b *testing.B) {
+func BenchmarkGolWithDebugLevel(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(gol.Ldefault).Level(gol.DEBUG).Writer(file)
 
@@ -62,7 +62,7 @@ func BenchmarkgolWithDebugLevel(b *testing.B) {
 	}
 }
 
-func BenchmarkgolWithFields(b *testing.B) {
+func BenchmarkGolWithFields(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(gol.Ldefault).Writer(file)
 
@@ -72,13 +72,13 @@ func BenchmarkgolWithFields(b *testing.B) {
 	}
 }
 
-func BenchmarkgolWithFieldsFormat(b *testing.B) {
+func BenchmarkGolWithFieldsFormat(b *testing.B) {
 	file, _ := ioutil.TempFile("", "benchmark.log")
 	gol.Flag(gol.Ldefault).Writer(file)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gol.With(gol.F{"url": "www.demo.com", "attempt": 5, "duration": time.Second}).Infof("Benchmark %d", i)
-		//gol.With(nil).Str("url", "www.demo.com").Int("attempt", 5).Dur("duration", time.Second).Infof("Benckmark %d", i)
+		//gol.With(gol.F{"url": "www.demo.com", "attempt": 5, "duration": time.Second}).Infof("Benchmark %d", i)
+		gol.With(nil).Str("url", "www.demo.com").Int("attempt", 5).Dur("duration", time.Second).Infof("Benckmark %d", i)
 	}
 }
