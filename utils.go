@@ -8,7 +8,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -99,6 +98,107 @@ func replaceDoubleQuote(buf *[]byte, s string) {
 		}
 		*buf = append(*buf, c)
 	}
+}
+
+func replaceEscapePeriod(s string, flag bool) string {
+	var buf []rune
+	for _, c := range s {
+		if flag {
+			if c == '.' {
+				l := len(buf)
+				if l > 0 && buf[l-1] == '\\' {
+					buf = buf[:l-1]
+					buf = append(buf, '`')
+					continue
+				}
+			}
+		} else {
+			if c == '`' {
+				buf = append(buf, '.')
+				continue
+			}
+		}
+		buf = append(buf, c)
+	}
+	return string(buf)
+}
+
+func stringContainRune(s string, r rune) bool {
+	for _, c := range s {
+		if c == r {
+			return true
+		}
+	}
+	return false
+}
+
+func stringIndex(s, t string) int {
+	if len(t) == 0 {
+		return 0
+	}
+	if len(s) < len(t) {
+		return -1
+	}
+	for i := 0; i <= len(s)-len(t); i++ {
+		if string(s[i:i+len(t)]) == t {
+			return i
+		}
+	}
+	return -1
+}
+
+func stringContainStr(s, t string) bool {
+	return stringIndex(s, t) >= 0
+	// sr := []rune(s)
+	// tr := []rune(t)
+	// for i := 0; i <= len(sr)-len(tr); i++ {
+	// 	if sr[i] == tr[0] {
+	// 		j := 1
+	// 		for ; j < len(tr); j++ {
+	// 			if sr[i+j] != tr[j] {
+	// 				break
+	// 			}
+	// 		}
+	// 		if j == len(tr) {
+	// 			return true
+	// 		}
+	// 	}
+	// }
+	// return false
+}
+
+func stringPrefixStr(s, t string) bool {
+	return stringIndex(s, t) == 0
+}
+
+func stringSuffixStr(s, t string) bool {
+	if len(t) == 0 {
+		return true
+	}
+	if len(s) < len(t) {
+		return false
+	}
+	return string(s[len(s)-len(t):]) == t
+}
+
+func stringSplit(s string, r rune) []string {
+	var strs []string
+	var runes []rune
+	for i, c := range s {
+		if c != r {
+			runes = append(runes, c)
+			if i == len(s)-1 {
+				strs = append(strs, string(runes))
+				break
+			}
+		} else {
+			if runes != nil {
+				strs = append(strs, string(runes))
+			}
+			runes = nil
+		}
+	}
+	return strs
 }
 
 func mapi2maps(i interface{}) interface{} {
@@ -417,7 +517,9 @@ func Jsquery(jsonData string, keyPath string) interface{} {
 		return nil
 	}
 	val = m
-	for _, p := range strings.Split(keyPath, ".") {
+	keyPath = replaceEscapePeriod(keyPath, true)
+	for _, p := range stringSplit(keyPath, '.') {
+		p = replaceEscapePeriod(p, false)
 		if matched, _ := regexp.MatchString(`^\[\d+\]$`, p); matched {
 			if data, ok := val.([]interface{}); ok {
 				if len(data) == 0 {
@@ -482,27 +584,27 @@ func Jsquery(jsonData string, keyPath string) interface{} {
 func getJsonVal(data map[string]interface{}, p string) interface{} {
 	var key string
 	var i int
-	ki := strings.Split(p, "#")
+	ki := stringSplit(p, '#')
 	key = ki[0]
 	if len(ki) > 1 {
 		i, _ = strconv.Atoi(ki[1])
 	}
 	var keys []string
-	if strings.HasPrefix(key, "*") && strings.HasSuffix(key, "*") {
+	if key[0] == '*' && key[len(key)-1] == '*' {
 		for k := range data {
-			if strings.Contains(k, key) {
+			if stringContainStr(k, key) {
 				keys = append(keys, k)
 			}
 		}
-	} else if strings.HasPrefix(key, "*") {
+	} else if key[0] == '*' {
 		for k := range data {
-			if strings.HasSuffix(k, key[1:]) {
+			if stringSuffixStr(k, key[1:]) {
 				keys = append(keys, k)
 			}
 		}
-	} else if strings.HasSuffix(key, "*") {
+	} else if key[len(key)-1] == '*' {
 		for k := range data {
-			if strings.HasPrefix(k, key[:len(key)-1]) {
+			if stringPrefixStr(k, key[:len(key)-1]) {
 				keys = append(keys, k)
 			}
 		}
@@ -538,9 +640,9 @@ func getJsonItem(data []interface{}, p string) interface{} {
 		return tdata
 	} else if p == "#" || p == "len" {
 		return len(data)
-	} else if strings.Contains(p, " ") {
+	} else if stringContainRune(p, ' ') {
 		var tdata []interface{}
-		for _, i := range strings.Split(p, " ") {
+		for _, i := range stringSplit(p, ' ') {
 			if idx, err := strconv.Atoi(i); err == nil {
 				if idx < len(data) {
 					tdata = append(tdata, data[idx])

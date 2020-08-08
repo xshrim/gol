@@ -418,14 +418,14 @@ type Person struct {
 func main() {
   jsdata := `{
     "name": "tom",
-    "age":  25,
+    "age": 25,
     "hobbies": ["football", "movie", "read", "music"],
     "location": [{
-      "city":   "foo",
+      "prov.city": "foo",
       "street": "bar"
     }]
   }`
-  gol.Prtln(Jsquery(jsdata, "loc*.[0].city"))
+  gol.Prtln(Jsquery(jsdata, "loc*.[0].prov\\.city"))
   gol.Prtln(Jsquery(jsdata, "hobbies[odd].[0]"))
   user := gol.F{
     "name":     "tom",
