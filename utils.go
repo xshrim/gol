@@ -356,14 +356,16 @@ func map2json(dst []byte, fds F) []byte {
 			dst = appendDuration(dst, val, time.Millisecond)
 		case []time.Duration:
 			dst = appendDurations(dst, val, time.Millisecond)
-		case interface{}:
-			dst = appendInterface(dst, val)
 		case net.IP:
 			dst = appendIPAddr(dst, val)
 		case net.IPNet:
 			dst = appendIPPrefix(dst, val)
 		case net.HardwareAddr:
 			dst = appendMACAddr(dst, val)
+		case nil:
+			dst = append(dst, []byte("null")...)
+		case interface{}:
+			dst = appendInterface(dst, val)
 		default:
 			dst = appendObject(dst, val)
 		}
@@ -441,6 +443,7 @@ func tojson(dst []byte, v interface{}) []byte {
 	case []time.Duration:
 		dst = appendDurations(dst, val, time.Millisecond)
 	case map[string]interface{}:
+		dst = append(dst, '{')
 		for k, v := range val {
 			dst = appendKey(dst, k)
 			dst = tojson(dst, v)
@@ -459,9 +462,12 @@ func tojson(dst []byte, v interface{}) []byte {
 			dst = append(dst, '}')
 			dst = append(dst, ',')
 		}
-		dst = dst[:len(dst)-1]
+		if len(val) > 0 {
+			dst = dst[:len(dst)-1]
+		}
 		dst = append(dst, ']')
 	case F:
+		dst = append(dst, '{')
 		for k, v := range val {
 			dst = appendKey(dst, k)
 			dst = tojson(dst, v)
@@ -480,7 +486,9 @@ func tojson(dst []byte, v interface{}) []byte {
 			dst = append(dst, '}')
 			dst = append(dst, ',')
 		}
-		dst = dst[:len(dst)-1]
+		if len(val) > 0 {
+			dst = dst[:len(dst)-1]
+		}
 		dst = append(dst, ']')
 	case []interface{}:
 		dst = append(dst, '[')
@@ -488,16 +496,20 @@ func tojson(dst []byte, v interface{}) []byte {
 			dst = tojson(dst, s)
 			dst = append(dst, ',')
 		}
-		dst = dst[:len(dst)-1]
+		if len(val) > 0 {
+			dst = dst[:len(dst)-1]
+		}
 		dst = append(dst, ']')
-	case interface{}:
-		dst = appendInterface(dst, val)
 	case net.IP:
 		dst = appendIPAddr(dst, val)
 	case net.IPNet:
 		dst = appendIPPrefix(dst, val)
 	case net.HardwareAddr:
 		dst = appendMACAddr(dst, val)
+	case nil:
+		dst = append(dst, []byte("null")...)
+	case interface{}:
+		dst = appendInterface(dst, val)
 	default:
 		dst = appendObject(dst, val)
 	}
@@ -742,7 +754,7 @@ func writeFile(logfile string, mode int, data []string) {
 }
 
 func appendKey(dst []byte, key string) []byte {
-	if len(dst) == 0 {
+	if len(dst) == 0 || dst[len(dst)-1] == '[' || dst[len(dst)-1] == ':' {
 		dst = append(dst, '{')
 	}
 
