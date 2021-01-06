@@ -532,7 +532,7 @@ func Imapify(data interface{}) map[string]interface{} {
 	case []byte:
 		err = json.Unmarshal(v, &m)
 	default:
-		d, err := json.Marshal(cc)
+		d, err := json.Marshal(v)
 		if err != nil {
 			return nil
 		}
