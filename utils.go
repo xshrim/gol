@@ -521,7 +521,7 @@ func Jsonify(v interface{}) string {
 	return string(tojson(nil, v))
 }
 
-// convert json string to map[string]interface{}
+// convert data to map[string]interface{}
 func Imapify(data interface{}) map[string]interface{} {
 	var err error
 	m := make(map[string]interface{})
