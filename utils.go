@@ -521,14 +521,47 @@ func Jsonify(v interface{}) string {
 	return string(tojson(nil, v))
 }
 
-// get value of the path key from json string
-func Jsquery(jsonData string, keyPath string) interface{} {
-	var val interface{}
+// convert json string to map[string]interface{}
+func Imapify(jsonData string) map[string]interface{} {
 	m := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(jsonData), &m); err != nil {
 		return nil
 	}
-	val = m
+	return m
+}
+
+// modify map[string]interface{}
+func Imapset(data map[string]interface{}, keyPath string, val interface{}) error {
+	ok := false
+	keys := stringSplit(replaceEscapePeriod(keyPath, true), '.')
+
+	for idx, key := range keys {
+		if key == "" {
+			continue
+		}
+
+		if idx == len(keys)-1 {
+			if val == nil {
+				delete(data, key)
+			} else {
+				data[key] = val
+			}
+		} else {
+			data, ok = data[key].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("value of keyPath %s is not type map[string]interface{}", keyPath)
+			}
+		}
+	}
+
+	return nil
+}
+
+// get value of the path key from json string
+func Jsquery(jsonData string, keyPath string) interface{} {
+	var val interface{}
+
+	val = Imapify(jsonData)
 	keyPath = replaceEscapePeriod(keyPath, true)
 	for _, p := range stringSplit(keyPath, '.') {
 		p = replaceEscapePeriod(p, false)

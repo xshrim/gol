@@ -405,6 +405,8 @@ gol日志库内置了一些常用的工具函数, 除**Prt**, **Prtf**, **Prtln*
 - **Cprt**, **Cprtf**, **Cprtln**: 彩色输出
 - **Jsonify**: 将任意数据结构转换为json字符串(内置的**F**类型等价于map[string]interface{}, 同样支持转换)
 - **Jsquery**: 根据字符串路径提取json字符串中的特定key的value, 无需构建结构体, 字符串路径支持高级格式, 如"user*#0[0].[1-3]"表示json字符串中第一个带user前缀的key的value的第一个元素的第二和第三个子元素.
+- **Imapify**: 将json字符串转换为map[string]interface{}(内置的**F**类型等价于map[string]interface{})
+- **Imapset**: 修改map[string]interface{}指定key的value, 字符串路径不支持高级格式(切片路径内的value需配合Jsquery实现)
 
 使用举例:
 
@@ -439,6 +441,7 @@ func main() {
   }
   gol.Prtln(Jsonify(user))
   gol.Prtln(Jsonify([]map[string]interface{}{map[string]interface{}{"a": 1, "b": "demo"}, map[string]interface{}{"c": 2, "d": []string{"foo", "bar"}}}))
+  Imapset(user, "hobbies", []string{"read", "music"})
   gol.AddFlag(gol.Ljson).With(user).Info(user)
 }
 ```
@@ -473,7 +476,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 2688   | 2895   | 741           | 2321         | -              | -          | -                |
 | logrus   | 7254   | 8849   | 4786          | 4429         | 8453           | 12751      | 13890            |
-| gol     | 2750   | 2926   | 768           | 2450         | 2764           | 4585       | 4657             |
+| gol      | 2750   | 2926   | 768           | 2450         | 2764           | 4585       | 4657             |
 | zap      | 3903   | -      | 978           | 3019         | 3991           | 5602       | -                |
 | zapsugar | 4489   | 4627   | 1283          | 2895         | 3823           | 10791      | 11214            |
 | zerolog  | 3203   | 3751   | 999           | 2164         | 3094           | 3579       | 4194             |
@@ -484,7 +487,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 16     | 36     | 16            | 16           | -              | -          | -                |
 | logrus   | 405    | 505    | 405           | 277          | 469            | 955        | 1048             |
-| gol     | 16     | 36     | 16            | 16           | 16             | 132        | 149              |
+| gol      | 16     | 36     | 16            | 16           | 16             | 132        | 149              |
 | zap      | 0      | -      | 0             | 0            | 0              | 192        | -                |
 | zapsugar | 16     | 33     | 16            | 0            | 0              | 336        | 360              |
 | zerolog  | 0      | 35     | 0             | 0            | 0              | 0          | 34               |
@@ -495,7 +498,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 1      | 2      | 1             | 1            | -              | -          | -                |
 | logrus   | 13     | 18     | 13            | 8            | 16             | 19         | 24               |
-| gol     | 1      | 2      | 1             | 1            | 1              | 5          | 6                |
+| gol      | 1      | 2      | 1             | 1            | 1              | 5          | 6                |
 | zap      | 0      | -      | 0             | 0            | 0              | 1          | -                |
 | zapsugar | 1      | 2      | 1             | 0            | 0              | 4          | 5                |
 | zerolog  | 0      | 2      | 0             | 0            | 0              | 0          | 2                |
