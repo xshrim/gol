@@ -522,11 +522,27 @@ func Jsonify(v interface{}) string {
 }
 
 // convert json string to map[string]interface{}
-func Imapify(jsonData string) map[string]interface{} {
+func Imapify(data interface{}) map[string]interface{} {
+	var err error
 	m := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(jsonData), &m); err != nil {
+
+	switch v := data.(type) {
+	case string:
+		err = json.Unmarshal([]byte(v), &m)
+	case []byte:
+		err = json.Unmarshal(v, &m)
+	default:
+		d, err := json.Marshal(cc)
+		if err != nil {
+			return nil
+		}
+		err = json.Unmarshal(d, &m)
+	}
+
+	if err != nil {
 		return nil
 	}
+
 	return m
 }
 
