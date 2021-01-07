@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/xshrim/gol/color"
+	"github.com/xshrim/gol/colors"
 )
 
 // util functions
@@ -245,20 +245,20 @@ func colorStatusCode(statusCode int) string {
 
 	switch {
 	case statusCode < 200:
-		buff = append(buff, color.WYellow...)
+		buff = append(buff, colors.WYellow...)
 	case statusCode < 300:
-		buff = append(buff, color.WGreen...)
+		buff = append(buff, colors.WGreen...)
 	case statusCode < 400:
-		buff = append(buff, color.WBlue...)
+		buff = append(buff, colors.WBlue...)
 	case statusCode < 500:
-		buff = append(buff, color.WRed...)
+		buff = append(buff, colors.WRed...)
 	case statusCode < 600:
-		buff = append(buff, color.WPurple...)
+		buff = append(buff, colors.WPurple...)
 	default:
-		buff = append(buff, color.WCyan...)
+		buff = append(buff, colors.WCyan...)
 	}
 	itoa(&buff, statusCode, 3)
-	buff = append(buff, color.ColorOff...)
+	buff = append(buff, colors.ColorOff...)
 	return string(buff)
 }
 
@@ -266,23 +266,23 @@ func colorRequestMethod(mtd string) string {
 	var buff []byte
 	switch mtd {
 	case "GET":
-		buff = append(buff, color.WGreen...)
+		buff = append(buff, colors.WGreen...)
 	case "POST":
-		buff = append(buff, color.WBlue...)
+		buff = append(buff, colors.WBlue...)
 	case "DELETE":
-		buff = append(buff, color.WRed...)
+		buff = append(buff, colors.WRed...)
 	case "PUT":
-		buff = append(buff, color.WPurple...)
+		buff = append(buff, colors.WPurple...)
 	case "PATCH":
-		buff = append(buff, color.WYellow...)
+		buff = append(buff, colors.WYellow...)
 	default:
-		buff = append(buff, color.WCyan...)
+		buff = append(buff, colors.WCyan...)
 	}
 	buff = append(buff, mtd...)
 	for i := 5 - len(mtd); i > 0; i-- {
 		buff = append(buff, ' ')
 	}
-	buff = append(buff, color.ColorOff...)
+	buff = append(buff, colors.ColorOff...)
 	return string(buff)
 }
 
