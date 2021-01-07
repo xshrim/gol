@@ -455,10 +455,10 @@ func tojson(dst []byte, v interface{}) []byte {
 	case []map[string]interface{}:
 		dst = append(dst, '[')
 		for _, m := range val {
+			if dst[len(dst)-1] == '[' || dst[len(dst)-1] == ',' {
+				dst = append(dst, '{')
+			}
 			for k, v := range m {
-				if dst[len(dst)-1] == '[' {
-					dst = append(dst, '{')
-				}
 				dst = appendKey(dst, k)
 				dst = tojson(dst, v)
 			}
@@ -479,10 +479,10 @@ func tojson(dst []byte, v interface{}) []byte {
 	case []F:
 		dst = append(dst, '[')
 		for _, f := range val {
+			if dst[len(dst)-1] == '[' || dst[len(dst)-1] == ',' {
+				dst = append(dst, '{')
+			}
 			for k, v := range f {
-				if dst[len(dst)-1] == '[' {
-					dst = append(dst, '{')
-				}
 				dst = appendKey(dst, k)
 				dst = tojson(dst, v)
 			}
