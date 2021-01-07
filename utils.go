@@ -631,6 +631,7 @@ func Imapset(data map[string]interface{}, keyPath string, val interface{}) error
 	return nil
 }
 
+// set value of the path key from json string
 func Jsmodify(jsonData string, keyPath string, val interface{}) string {
 	data = Imapify(jsonData)
 	Imapset(data, keyPath, val)
