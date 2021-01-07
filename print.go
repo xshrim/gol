@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/xshrim/gol/color"
 )
 
 // check and deal with multiple output arguments

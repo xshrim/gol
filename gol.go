@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/xshrim/gol/color"
 )
 
 type LogHook func(int, *[]byte) bool

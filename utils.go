@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 	"unicode/utf8"
+
+	"github.com/xshrim/gol/color"
 )
 
 // util functions
