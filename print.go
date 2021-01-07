@@ -33,7 +33,7 @@ func formatData(v ...interface{}) string {
 // output colorful message to stdout using default logger
 func Cprt(color string, v ...interface{}) (int, error) {
 	v = append([]interface{}{color}, v...)
-	v = append(v, ColorOff)
+	v = append(v, color.ColorOff)
 	return Fprt(os.Stdout, v...)
 }
 
@@ -41,14 +41,14 @@ func Cprt(color string, v ...interface{}) (int, error) {
 func Cprtf(color string, format string, v ...interface{}) (int, error) {
 	format = "%s" + format + "%s"
 	v = append([]interface{}{color}, v...)
-	v = append(v, ColorOff)
+	v = append(v, color.ColorOff)
 	return Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline using default logger
 func Cprtln(color string, v ...interface{}) (int, error) {
 	line := fmt.Sprintln(v...)
-	line = color + line[:len(line)-1] + ColorOff
+	line = color + line[:len(line)-1] + color.ColorOff
 	return Fprtln(os.Stdout, line)
 }
 
@@ -110,7 +110,7 @@ func Errf(format string, v ...interface{}) error {
 // output colorful message to stdout
 func (l *Logger) Cprt(color string, v ...interface{}) (int, error) {
 	v = append([]interface{}{color}, v...)
-	v = append(v, ColorOff)
+	v = append(v, color.ColorOff)
 	return Fprt(os.Stdout, v...)
 }
 
@@ -118,14 +118,14 @@ func (l *Logger) Cprt(color string, v ...interface{}) (int, error) {
 func (l *Logger) Cprtf(color string, format string, v ...interface{}) (int, error) {
 	format = "%s" + format + "%s"
 	v = append([]interface{}{color}, v...)
-	v = append(v, ColorOff)
+	v = append(v, color.ColorOff)
 	return Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline
 func (l *Logger) Cprtln(color string, v ...interface{}) (int, error) {
 	line := fmt.Sprintln(v...)
-	line = color + line[:len(line)-1] + ColorOff
+	line = color + line[:len(line)-1] + color.ColorOff
 	return Fprtln(os.Stdout, line)
 }
 

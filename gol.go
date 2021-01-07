@@ -881,13 +881,13 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, l.keys.prefixKey...)
 		} else if l.flag&Lfcolor != 0 {
-			*buf = append(*buf, Red...)
+			*buf = append(*buf, color.Red...)
 		}
 		*buf = append(*buf, l.prefix...)
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, "\","...)
 		} else if l.flag&Lfcolor != 0 {
-			*buf = append(*buf, ColorOff...)
+			*buf = append(*buf, color.ColorOff...)
 		}
 		*buf = append(*buf, ' ')
 	}
@@ -901,7 +901,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, l.keys.dateKey...)
 			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, Yellow...)
+				*buf = append(*buf, color.Yellow...)
 			}
 			itoa(buf, year, 4)
 			*buf = append(*buf, '/')
@@ -911,7 +911,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, "\","...)
 			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 			*buf = append(*buf, ' ')
 		}
@@ -920,7 +920,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, l.keys.timeKey...)
 			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, Yellow...)
+				*buf = append(*buf, color.Yellow...)
 			}
 			itoa(buf, hour, 2)
 			*buf = append(*buf, ':')
@@ -934,7 +934,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, "\","...)
 			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 			*buf = append(*buf, ' ')
 		}
@@ -944,7 +944,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, l.keys.stackKey...)
 		} else {
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, Purple...)
+				*buf = append(*buf, color.Purple...)
 			}
 			*buf = append(*buf, '<')
 		}
@@ -954,7 +954,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		} else {
 			*buf = append(*buf, '>')
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 		}
 		*buf = append(*buf, ' ')
@@ -973,7 +973,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, l.keys.fileKey...)
 		} else if l.flag&Lfcolor != 0 {
-			*buf = append(*buf, Cyan...)
+			*buf = append(*buf, color.Cyan...)
 		}
 		l.buf = append(l.buf, file...)
 		l.buf = append(l.buf, ':')
@@ -983,7 +983,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		} else {
 			// *buf = append(*buf, ':')
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 		}
 		*buf = append(*buf, ' ')
@@ -996,7 +996,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		switch lv {
 		case PANIC:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BWhite...)
+				*buf = append(*buf, color.BWhite...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1004,7 +1004,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "PANIC"...)
 		case FATAL:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BBlue...)
+				*buf = append(*buf, color.BBlue...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1012,7 +1012,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "FATAL"...)
 		case ERROR:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BRed...)
+				*buf = append(*buf, color.BRed...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1020,7 +1020,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "ERROR"...)
 		case WARN:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BYellow...)
+				*buf = append(*buf, color.BYellow...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1028,7 +1028,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "WARN"...)
 		case NOTIC:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BYellow...)
+				*buf = append(*buf, color.BYellow...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1036,7 +1036,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "NOTIC"...)
 		case INFO:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BGreen...)
+				*buf = append(*buf, color.BGreen...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1044,7 +1044,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "INFO"...)
 		case DEBUG:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BPurple...)
+				*buf = append(*buf, color.BPurple...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1052,7 +1052,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, "DEBUG"...)
 		case TRACE:
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, BCyan...)
+				*buf = append(*buf, color.BCyan...)
 			}
 			if l.flag&Ljson == 0 {
 				*buf = append(*buf, '[')
@@ -1064,7 +1064,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		} else {
 			*buf = append(*buf, ']')
 			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 		}
 		*buf = append(*buf, ' ')
@@ -1076,7 +1076,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			//replaceDoubleQuote(buf, fd)
 		} else {
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, Blue...)
+				*buf = append(*buf, color.Blue...)
 			}
 		}
 		*buf = append(*buf, fd...)
@@ -1085,7 +1085,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			*buf = append(*buf, ',')
 		} else {
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, ColorOff...)
+				*buf = append(*buf, color.ColorOff...)
 			}
 		}
 		*buf = append(*buf, ' ')
@@ -1143,7 +1143,7 @@ func (l *Logger) Output(lv, calldepth int, fd []byte, s string, feed bool) error
 			}
 		} else {
 			if l.flag&Lfcolor != 0 {
-				l.buf = append(l.buf, Green...)
+				l.buf = append(l.buf, color.Green...)
 			}
 			l.buf = append(l.buf, s...)
 		}
@@ -1152,7 +1152,7 @@ func (l *Logger) Output(lv, calldepth int, fd []byte, s string, feed bool) error
 				l.buf = append(l.buf, '"')
 			}
 		} else if l.flag&Lfcolor != 0 {
-			l.buf = append(l.buf, ColorOff...)
+			l.buf = append(l.buf, color.ColorOff...)
 		}
 	}
 	if l.flag&Ljson != 0 {

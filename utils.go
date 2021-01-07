@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -242,20 +243,20 @@ func colorStatusCode(statusCode int) string {
 
 	switch {
 	case statusCode < 200:
-		buff = append(buff, WYellow...)
+		buff = append(buff, color.WYellow...)
 	case statusCode < 300:
-		buff = append(buff, WGreen...)
+		buff = append(buff, color.WGreen...)
 	case statusCode < 400:
-		buff = append(buff, WBlue...)
+		buff = append(buff, color.WBlue...)
 	case statusCode < 500:
-		buff = append(buff, WRed...)
+		buff = append(buff, color.WRed...)
 	case statusCode < 600:
-		buff = append(buff, WPurple...)
+		buff = append(buff, color.WPurple...)
 	default:
-		buff = append(buff, WCyan...)
+		buff = append(buff, color.WCyan...)
 	}
 	itoa(&buff, statusCode, 3)
-	buff = append(buff, ColorOff...)
+	buff = append(buff, color.ColorOff...)
 	return string(buff)
 }
 
@@ -263,23 +264,23 @@ func colorRequestMethod(mtd string) string {
 	var buff []byte
 	switch mtd {
 	case "GET":
-		buff = append(buff, WGreen...)
+		buff = append(buff, color.WGreen...)
 	case "POST":
-		buff = append(buff, WBlue...)
+		buff = append(buff, color.WBlue...)
 	case "DELETE":
-		buff = append(buff, WRed...)
+		buff = append(buff, color.WRed...)
 	case "PUT":
-		buff = append(buff, WPurple...)
+		buff = append(buff, color.WPurple...)
 	case "PATCH":
-		buff = append(buff, WYellow...)
+		buff = append(buff, color.WYellow...)
 	default:
-		buff = append(buff, WCyan...)
+		buff = append(buff, color.WCyan...)
 	}
 	buff = append(buff, mtd...)
 	for i := 5 - len(mtd); i > 0; i-- {
 		buff = append(buff, ' ')
 	}
-	buff = append(buff, ColorOff...)
+	buff = append(buff, color.ColorOff...)
 	return string(buff)
 }
 
@@ -552,20 +553,77 @@ func Imapset(data map[string]interface{}, keyPath string, val interface{}) error
 	keys := stringSplit(replaceEscapePeriod(keyPath, true), '.')
 
 	for idx, key := range keys {
+		kidx := -1
+		key = replaceEscapePeriod(key, false)
 		if key == "" {
 			continue
+		}
+		if matched, _ := regexp.MatchString(`^\w+\[\d+\]$`, key); matched {
+			res := regexp.MustCompile(`^(\w+)\[(\d+)\]$`).FindStringSubmatch(key)
+			key = res[1]
+			var err error
+			if kidx, err = strconv.Atoi(res[2]); err != nil {
+				return err
+			}
 		}
 
 		if idx == len(keys)-1 {
 			if val == nil {
-				delete(data, key)
+				if kidx < 0 {
+					delete(data, key)
+				} else {
+					if reflect.TypeOf(data[key]).Kind() != reflect.Slice {
+						return fmt.Errorf("value of keyPath %s is not type []interface{}", keyPath)
+					}
+					var temp []interface{}
+					v := reflect.ValueOf(data[key])
+					if kidx >= v.Len() {
+						return fmt.Errorf("keyPath %s index out of range", keyPath)
+					}
+					for i := 0; i < v.Len(); i++ {
+						if i != kidx {
+							temp = append(temp, v.Index(i).Interface())
+						}
+					}
+					data[key] = temp
+				}
 			} else {
-				data[key] = val
+				if kidx < 0 {
+					data[key] = val
+				} else {
+					if reflect.TypeOf(data[key]).Kind() != reflect.Slice {
+						return fmt.Errorf("value of keyPath %s is not type []interface{}", keyPath)
+					}
+					var temp []interface{}
+					v := reflect.ValueOf(data[key])
+					if kidx >= v.Len() {
+						return fmt.Errorf("keyPath %s index out of range", keyPath)
+					}
+					for i := 0; i < v.Len(); i++ {
+						if i != kidx {
+							temp = append(temp, v.Index(i).Interface())
+						} else {
+							temp = append(temp, val)
+						}
+					}
+					data[key] = temp
+				}
 			}
 		} else {
-			data, ok = data[key].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("value of keyPath %s is not type map[string]interface{}", keyPath)
+			if kidx < 0 {
+				data, ok = data[key].(map[string]interface{})
+				if !ok {
+					return fmt.Errorf("value of keyPath %s is not type map[string]interface{}", keyPath)
+				}
+			} else {
+				if reflect.TypeOf(data[key]).Kind() != reflect.Slice {
+					return fmt.Errorf("value of keyPath %s is not type []interface{}", keyPath)
+				}
+				v := reflect.ValueOf(data[key])
+				if kidx >= v.Len() {
+					return fmt.Errorf("keyPath %s index out of range", keyPath)
+				}
+				data = v.Index(kidx).Interface().(map[string]interface{})
 			}
 		}
 	}

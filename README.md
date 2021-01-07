@@ -406,7 +406,7 @@ gol日志库内置了一些常用的工具函数, 除**Prt**, **Prtf**, **Prtln*
 - **Jsonify**: 将任意数据结构转换为json字符串(内置的**F**类型等价于map[string]interface{}, 同样支持转换)
 - **Jsquery**: 根据字符串路径提取json字符串中的特定key的value, 无需构建结构体, 字符串路径支持高级格式, 如"user*#0[0].[1-3]"表示json字符串中第一个带user前缀的key的value的第一个元素的第二和第三个子元素.
 - **Imapify**: 将json字符串转换为map[string]interface{}(内置的**F**类型等价于map[string]interface{})
-- **Imapset**: 修改map[string]interface{}指定key的value, 字符串路径不支持高级格式(切片路径内的value需配合Jsquery实现)
+- **Imapset**: 修改map[string]interface{}指定key的value, 字符串路径支持下标, 如user[0]表示修改key为user的第一个子元素.
 
 使用举例:
 
@@ -427,8 +427,8 @@ func main() {
       "street": "bar"
     }]
   }`
-  gol.Prtln(Jsquery(jsdata, "loc*.[0].prov\\.city"))
-  gol.Prtln(Jsquery(jsdata, "hobbies[odd].[0]"))
+  gol.Prtln(gol.Jsquery(jsdata, "loc*.[0].prov\\.city"))
+  gol.Prtln(gol.Jsquery(jsdata, "hobbies[odd].[0]"))
   user := gol.F{
     "name":     "tom",
     "age":      25,
@@ -439,9 +439,9 @@ func main() {
       "street": "bar",
     }},
   }
-  gol.Prtln(Jsonify(user))
-  gol.Prtln(Jsonify([]map[string]interface{}{map[string]interface{}{"a": 1, "b": "demo"}, map[string]interface{}{"c": 2, "d": []string{"foo", "bar"}}}))
-  Imapset(user, "hobbies", []string{"read", "music"})
+  gol.Prtln(gol.Jsonify(user))
+  gol.Prtln(gol.Jsonify([]map[string]interface{}{map[string]interface{}{"a": 1, "b": "demo"}, map[string]interface{}{"c": 2, "d": []string{"foo", "bar"}}}))
+  gol.Imapset(user, "hobbies[0]", []string{"game"})
   gol.AddFlag(gol.Ljson).With(user).Info(user)
 }
 ```
