@@ -545,23 +545,23 @@ func (c *Context) Obj(key string, o interface{}) *Context {
 	return c
 }
 
-// IPAddr adds IPv4 or IPv6 Address
-func (c *Context) Ip(key string, ip net.IP) *Context {
-	c.buf = appendIPAddr(appendKey(c.buf, key), ip)
+// IP adds IPv4 or IPv6 Address
+func (c *Context) IP(key string, ip net.IP) *Context {
+	c.buf = appendIP(appendKey(c.buf, key), ip)
 
 	return c
 }
 
-// IPPrefix adds IPv4 or IPv6 Prefix (address and mask)
-func (c *Context) Ipp(key string, pfx net.IPNet) *Context {
-	c.buf = appendIPPrefix(appendKey(c.buf, key), pfx)
+// IPNet adds IPv4 or IPv6 Prefix (address and mask)
+func (c *Context) IPNet(key string, ipn net.IPNet) *Context {
+	c.buf = appendIPNet(appendKey(c.buf, key), ipn)
 
 	return c
 }
 
-// MACAddr adds MAC address
-func (c *Context) Mac(key string, ha net.HardwareAddr) *Context {
-	c.buf = appendMACAddr(appendKey(c.buf, key), ha)
+// Mac adds MAC address
+func (c *Context) Mac(key string, mac net.HardwareAddr) *Context {
+	c.buf = appendMac(appendKey(c.buf, key), mac)
 
 	return c
 }

@@ -33,40 +33,40 @@ func formatData(v ...interface{}) string {
 }
 
 // output colorful message to stdout using default logger
-func Cprt(color string, v ...interface{}) (int, error) {
+func Cprt(color string, v ...interface{}) {
 	v = append([]interface{}{color}, v...)
 	v = append(v, colors.ColorOff)
-	return Fprt(os.Stdout, v...)
+	Fprt(os.Stdout, v...)
 }
 
 // output colorful format message to stdout using default logger
-func Cprtf(color string, format string, v ...interface{}) (int, error) {
+func Cprtf(color string, format string, v ...interface{}) {
 	format = "%s" + format + "%s"
 	v = append([]interface{}{color}, v...)
 	v = append(v, colors.ColorOff)
-	return Fprtf(os.Stdout, format, v...)
+	Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline using default logger
-func Cprtln(color string, v ...interface{}) (int, error) {
+func Cprtln(color string, v ...interface{}) {
 	line := fmt.Sprintln(v...)
 	line = color + line[:len(line)-1] + colors.ColorOff
-	return Fprtln(os.Stdout, line)
+	Fprtln(os.Stdout, line)
 }
 
 // output message to stdout using default logger
-func Prt(v ...interface{}) (int, error) {
-	return Fprt(os.Stdout, v...)
+func Prt(v ...interface{}) {
+	Fprt(os.Stdout, v...)
 }
 
 // output format message to stdout using default logger
-func Prtf(format string, v ...interface{}) (int, error) {
-	return Fprtf(os.Stdout, format, v...)
+func Prtf(format string, v ...interface{}) {
+	Fprtf(os.Stdout, format, v...)
 }
 
 // output message to stdout with newline using default logger
-func Prtln(v ...interface{}) (int, error) {
-	return Fprtln(os.Stdout, v...)
+func Prtln(v ...interface{}) {
+	Fprtln(os.Stdout, v...)
 }
 
 // return message using default logger
@@ -85,18 +85,18 @@ func Sprtln(v ...interface{}) string {
 }
 
 // output message to the writer using default logger
-func Fprt(w io.Writer, v ...interface{}) (int, error) {
-	return fmt.Fprint(w, v...)
+func Fprt(w io.Writer, v ...interface{}) {
+	fmt.Fprint(w, v...)
 }
 
 // output format message to the writer using default logger
-func Fprtf(w io.Writer, format string, v ...interface{}) (int, error) {
-	return fmt.Fprintf(w, format, v...)
+func Fprtf(w io.Writer, format string, v ...interface{}) {
+	fmt.Fprintf(w, format, v...)
 }
 
 // output format message to the writer with newline using default logger
-func Fprtln(w io.Writer, v ...interface{}) (int, error) {
-	return fmt.Fprintln(w, v...)
+func Fprtln(w io.Writer, v ...interface{}) {
+	fmt.Fprintln(w, v...)
 }
 
 // return error message using default logger
@@ -110,40 +110,40 @@ func Errf(format string, v ...interface{}) error {
 }
 
 // output colorful message to stdout
-func (l *Logger) Cprt(color string, v ...interface{}) (int, error) {
+func (l *Logger) Cprt(color string, v ...interface{}) {
 	v = append([]interface{}{color}, v...)
 	v = append(v, colors.ColorOff)
-	return Fprt(os.Stdout, v...)
+	Fprt(os.Stdout, v...)
 }
 
 // output colorful format message to stdout
-func (l *Logger) Cprtf(color string, format string, v ...interface{}) (int, error) {
+func (l *Logger) Cprtf(color string, format string, v ...interface{}) {
 	format = "%s" + format + "%s"
 	v = append([]interface{}{color}, v...)
 	v = append(v, colors.ColorOff)
-	return Fprtf(os.Stdout, format, v...)
+	Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline
-func (l *Logger) Cprtln(color string, v ...interface{}) (int, error) {
+func (l *Logger) Cprtln(color string, v ...interface{}) {
 	line := fmt.Sprintln(v...)
 	line = color + line[:len(line)-1] + colors.ColorOff
-	return Fprtln(os.Stdout, line)
+	Fprtln(os.Stdout, line)
 }
 
 // output message to stdout
-func (l *Logger) Prt(v ...interface{}) (int, error) {
-	return Fprt(os.Stdout, v...)
+func (l *Logger) Prt(v ...interface{}) {
+	Fprt(os.Stdout, v...)
 }
 
 // output format message to stdout
-func (l *Logger) Prtf(format string, v ...interface{}) (int, error) {
-	return Fprtf(os.Stdout, format, v...)
+func (l *Logger) Prtf(format string, v ...interface{}) {
+	Fprtf(os.Stdout, format, v...)
 }
 
 // output message to stdout with newline
-func (l *Logger) Prtln(v ...interface{}) (int, error) {
-	return Fprtln(os.Stdout, v...)
+func (l *Logger) Prtln(v ...interface{}) {
+	Fprtln(os.Stdout, v...)
 }
 
 // return message
@@ -162,18 +162,18 @@ func (l *Logger) Sprtln(v ...interface{}) string {
 }
 
 // output message to the writer
-func (l *Logger) Fprt(w io.Writer, v ...interface{}) (int, error) {
-	return fmt.Fprint(w, v...)
+func (l *Logger) Fprt(w io.Writer, v ...interface{}) {
+	fmt.Fprint(w, v...)
 }
 
 // output format message to the writer
-func (l *Logger) Fprtf(w io.Writer, format string, v ...interface{}) (int, error) {
-	return fmt.Fprintf(w, format, v...)
+func (l *Logger) Fprtf(w io.Writer, format string, v ...interface{}) {
+	fmt.Fprintf(w, format, v...)
 }
 
 // output format message to the writer with newline
-func (l *Logger) Fprtln(w io.Writer, v ...interface{}) (int, error) {
-	return fmt.Fprintln(w, v...)
+func (l *Logger) Fprtln(w io.Writer, v ...interface{}) {
+	fmt.Fprintln(w, v...)
 }
 
 // return error message

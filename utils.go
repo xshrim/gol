@@ -1,15 +1,27 @@
 package gol
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
+	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
+	"math/rand"
 	"net"
+	"net/http"
 	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/xshrim/gol/colors"
@@ -293,10 +305,6 @@ func map2json(dst []byte, fds F) []byte {
 
 		// append value
 		switch val := v.(type) {
-		case string:
-			dst = appendStr(dst, val)
-		case []string:
-			dst = appendStrs(dst, val)
 		case []byte:
 			dst = appendBytes(dst, val)
 		case error:
@@ -351,6 +359,10 @@ func map2json(dst []byte, fds F) []byte {
 			dst = appendFloat64(dst, val)
 		case []float64:
 			dst = appendFloats64(dst, val)
+		case string:
+			dst = appendStr(dst, val)
+		case []string:
+			dst = appendStrs(dst, val)
 		case time.Time:
 			dst = appendTime(dst, val, time.RFC3339)
 		case []time.Time:
@@ -360,11 +372,17 @@ func map2json(dst []byte, fds F) []byte {
 		case []time.Duration:
 			dst = appendDurations(dst, val, time.Millisecond)
 		case net.IP:
-			dst = appendIPAddr(dst, val)
+			dst = appendIP(dst, val)
+		case []net.IP:
+			dst = appendIPs(dst, val)
 		case net.IPNet:
-			dst = appendIPPrefix(dst, val)
+			dst = appendIPNet(dst, val)
+		case []net.IPNet:
+			dst = appendIPNets(dst, val)
 		case net.HardwareAddr:
-			dst = appendMACAddr(dst, val)
+			dst = appendMac(dst, val)
+		case []net.HardwareAddr:
+			dst = appendMacs(dst, val)
 		case nil:
 			dst = append(dst, []byte("null")...)
 		case interface{}:
@@ -379,10 +397,6 @@ func map2json(dst []byte, fds F) []byte {
 // convert data to json-like []byte
 func tojson(dst []byte, v interface{}) []byte {
 	switch val := v.(type) {
-	case string:
-		dst = appendStr(dst, val)
-	case []string:
-		dst = appendStrs(dst, val)
 	case []byte:
 		dst = appendBytes(dst, val)
 	case error:
@@ -437,6 +451,10 @@ func tojson(dst []byte, v interface{}) []byte {
 		dst = appendFloat64(dst, val)
 	case []float64:
 		dst = appendFloats64(dst, val)
+	case string:
+		dst = appendStr(dst, val)
+	case []string:
+		dst = appendStrs(dst, val)
 	case time.Time:
 		dst = appendTime(dst, val, time.RFC3339)
 	case []time.Time:
@@ -504,11 +522,17 @@ func tojson(dst []byte, v interface{}) []byte {
 		}
 		dst = append(dst, ']')
 	case net.IP:
-		dst = appendIPAddr(dst, val)
+		dst = appendIP(dst, val)
+	case []net.IP:
+		dst = appendIPs(dst, val)
 	case net.IPNet:
-		dst = appendIPPrefix(dst, val)
+		dst = appendIPNet(dst, val)
+	case []net.IPNet:
+		dst = appendIPNets(dst, val)
 	case net.HardwareAddr:
-		dst = appendMACAddr(dst, val)
+		dst = appendMac(dst, val)
+	case []net.HardwareAddr:
+		dst = appendMacs(dst, val)
 	case nil:
 		dst = append(dst, []byte("null")...)
 	case interface{}:
@@ -522,6 +546,26 @@ func tojson(dst []byte, v interface{}) []byte {
 // convert data to json-like string
 func Jsonify(v interface{}) string {
 	return string(tojson(nil, v))
+}
+
+// marshal json with skipping func fields
+func Marshal(v interface{}) ([]byte, error) {
+	value := reflect.Indirect(reflect.ValueOf(v))
+	typ := value.Type()
+	if typ.Kind() == reflect.Struct {
+		sf := make([]reflect.StructField, 0)
+		for i := 0; i < typ.NumField(); i++ {
+			sf = append(sf, typ.Field(i))
+			if typ.Field(i).Type.Kind() == reflect.Func {
+				sf[i].Tag = `json:"-"`
+			}
+		}
+		newType := reflect.StructOf(sf)
+		newValue := value.Convert(newType)
+		return json.Marshal(newValue.Interface())
+	} else {
+		return json.Marshal(v)
+	}
 }
 
 // convert data to map[string]interface{}
@@ -1386,24 +1430,1606 @@ func appendDurations(dst []byte, vals []time.Duration, unit time.Duration) []byt
 func appendInterface(dst []byte, i interface{}) []byte {
 	marshaled, err := json.Marshal(i)
 	if err != nil {
-		return appendStr(dst, fmt.Sprintf("marshaling error: %v", err))
-	} else {
-		return append(dst, marshaled...)
+		marshaled, err = Marshal(i)
+		if err != nil {
+			return appendStr(dst, fmt.Sprintf("marshaling error: %v", err))
+		}
 	}
+
+	return append(dst, marshaled...)
 }
 
 func appendObject(dst []byte, o interface{}) []byte {
 	return appendStr(dst, fmt.Sprintf("%v", o))
 }
 
-func appendIPAddr(dst []byte, ip net.IP) []byte {
+func appendIP(dst []byte, ip net.IP) []byte {
 	return appendStr(dst, ip.String())
 }
 
-func appendIPPrefix(dst []byte, pfx net.IPNet) []byte {
-	return appendStr(dst, pfx.String())
+func appendIPs(dst []byte, vals []net.IP) []byte {
+	if len(vals) == 0 {
+		return append(dst, '[', ']')
+	}
+	dst = append(dst, '[')
+	dst = appendStr(dst, vals[0].String())
+	if len(vals) > 1 {
+		for _, val := range vals[1:] {
+			dst = appendStr(dst, val.String())
+		}
+	}
+	dst = append(dst, ']')
+	return dst
 }
 
-func appendMACAddr(dst []byte, ha net.HardwareAddr) []byte {
-	return appendStr(dst, ha.String())
+func appendIPNet(dst []byte, ipn net.IPNet) []byte {
+	return appendStr(dst, ipn.String())
+}
+
+func appendIPNets(dst []byte, vals []net.IPNet) []byte {
+	if len(vals) == 0 {
+		return append(dst, '[', ']')
+	}
+	dst = append(dst, '[')
+	dst = appendStr(dst, vals[0].String())
+	if len(vals) > 1 {
+		for _, val := range vals[1:] {
+			dst = appendStr(dst, val.String())
+		}
+	}
+	dst = append(dst, ']')
+	return dst
+}
+
+func appendMac(dst []byte, mac net.HardwareAddr) []byte {
+	return appendStr(dst, mac.String())
+}
+
+func appendMacs(dst []byte, vals []net.HardwareAddr) []byte {
+	if len(vals) == 0 {
+		return append(dst, '[', ']')
+	}
+	dst = append(dst, '[')
+	dst = appendStr(dst, vals[0].String())
+	if len(vals) > 1 {
+		for _, val := range vals[1:] {
+			dst = appendStr(dst, val.String())
+		}
+	}
+	dst = append(dst, ']')
+	return dst
+}
+
+func checkSum(data []byte) uint16 {
+	var (
+		sum    uint32
+		length int = len(data)
+		index  int
+	)
+	for length > 1 {
+		sum += uint32(data[index])<<8 + uint32(data[index+1])
+		index += 2
+		length -= 2
+	}
+	if length > 0 {
+		sum += uint32(data[index])
+	}
+	sum += (sum >> 16)
+
+	return uint16(^sum)
+}
+
+func compareInterface(a, b interface{}) int {
+	ma, _ := json.Marshal(a)
+	mb, _ := json.Marshal(b)
+	return bytes.Compare(ma, mb)
+}
+
+func quickSortBool(list []bool, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && (!pvt || list[chigh]) {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && (pvt || !list[clow]) {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortBool(list, low, pivot-1)
+		quickSortBool(list, pivot+1, high)
+	}
+}
+
+func quickSortRune(list []rune, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortRune(list, low, pivot-1)
+		quickSortRune(list, pivot+1, high)
+	}
+}
+
+func quickSortByte(list []byte, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortByte(list, low, pivot-1)
+		quickSortByte(list, pivot+1, high)
+	}
+}
+
+func quickSortBytes(list [][]byte, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && bytes.Compare(pvt, list[chigh]) <= 0 {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && bytes.Compare(pvt, list[clow]) >= 0 {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortBytes(list, low, pivot-1)
+		quickSortBytes(list, pivot+1, high)
+	}
+}
+
+func quickSortInt(list []int, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInt(list, low, pivot-1)
+		quickSortInt(list, pivot+1, high)
+	}
+}
+
+func quickSortInt8(list []int8, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInt8(list, low, pivot-1)
+		quickSortInt8(list, pivot+1, high)
+	}
+}
+
+func quickSortInt16(list []int16, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInt16(list, low, pivot-1)
+		quickSortInt16(list, pivot+1, high)
+	}
+}
+
+func quickSortInt32(list []int32, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInt32(list, low, pivot-1)
+		quickSortInt32(list, pivot+1, high)
+	}
+}
+
+func quickSortInt64(list []int64, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInt64(list, low, pivot-1)
+		quickSortInt64(list, pivot+1, high)
+	}
+}
+
+func quickSortUint(list []uint, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortUint(list, low, pivot-1)
+		quickSortUint(list, pivot+1, high)
+	}
+}
+
+func quickSortUint8(list []uint8, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortUint8(list, low, pivot-1)
+		quickSortUint8(list, pivot+1, high)
+	}
+}
+
+func quickSortUint16(list []uint16, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortUint16(list, low, pivot-1)
+		quickSortUint16(list, pivot+1, high)
+	}
+}
+
+func quickSortUint32(list []uint32, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortUint32(list, low, pivot-1)
+		quickSortUint32(list, pivot+1, high)
+	}
+}
+
+func quickSortUint64(list []uint64, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortUint64(list, low, pivot-1)
+		quickSortUint64(list, pivot+1, high)
+	}
+}
+
+func quickSortFloat32(list []float32, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortFloat32(list, low, pivot-1)
+		quickSortFloat32(list, pivot+1, high)
+	}
+}
+
+func quickSortFloat64(list []float64, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortFloat64(list, low, pivot-1)
+		quickSortFloat64(list, pivot+1, high)
+	}
+}
+
+func quickSortTime(list []time.Time, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && !pvt.After(list[chigh]) {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && !pvt.Before(list[clow]) {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortTime(list, low, pivot-1)
+		quickSortTime(list, pivot+1, high)
+	}
+}
+
+func quickSortDuration(list []time.Duration, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortDuration(list, low, pivot-1)
+		quickSortDuration(list, pivot+1, high)
+	}
+}
+
+func quickSortIP(list []net.IP, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && bytes.Compare(pvt, list[chigh]) <= 0 {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && bytes.Compare(pvt, list[clow]) >= 0 {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortIP(list, low, pivot-1)
+		quickSortIP(list, pivot+1, high)
+	}
+}
+
+func quickSortMac(list []net.HardwareAddr, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && bytes.Compare(pvt, list[chigh]) <= 0 {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && bytes.Compare(pvt, list[clow]) >= 0 {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortMac(list, low, pivot-1)
+		quickSortMac(list, pivot+1, high)
+	}
+}
+
+func quickSortString(list []string, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && pvt <= list[chigh] {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && pvt >= list[clow] {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortString(list, low, pivot-1)
+		quickSortString(list, pivot+1, high)
+	}
+}
+
+func quickSortInterface(list []interface{}, low, high int) {
+	if high > low {
+		clow := low
+		chigh := high
+		pvt := list[clow]
+		for clow < chigh {
+			for clow < chigh && compareInterface(pvt, list[chigh]) <= 0 {
+				chigh--
+			}
+			list[clow] = list[chigh]
+			for clow < chigh && compareInterface(pvt, list[clow]) >= 0 {
+				clow++
+			}
+			list[chigh] = list[clow]
+		}
+		list[clow] = pvt
+		pivot := clow
+
+		quickSortInterface(list, low, pivot-1)
+		quickSortInterface(list, pivot+1, high)
+	}
+}
+
+func QuickSort(list interface{}) {
+	switch v := list.(type) {
+	case []byte:
+		quickSortByte(v, 0, len(v)-1)
+	case [][]byte:
+		quickSortBytes(v, 0, len(v)-1)
+	case []bool:
+		quickSortBool(v, 0, len(v)-1)
+	case []int:
+		quickSortInt(v, 0, len(v)-1)
+	case []int8:
+		quickSortInt8(v, 0, len(v)-1)
+	case []int16:
+		quickSortInt16(v, 0, len(v)-1)
+	case []int32:
+		quickSortInt32(v, 0, len(v)-1)
+	case []int64:
+		quickSortInt64(v, 0, len(v)-1)
+	case []uint:
+		quickSortUint(v, 0, len(v)-1)
+	case []uint16:
+		quickSortUint16(v, 0, len(v)-1)
+	case []uint32:
+		quickSortUint32(v, 0, len(v)-1)
+	case []uint64:
+		quickSortUint64(v, 0, len(v)-1)
+	case []float32:
+		quickSortFloat32(v, 0, len(v)-1)
+	case []float64:
+		quickSortFloat64(v, 0, len(v)-1)
+	case []string:
+		quickSortString(v, 0, len(v)-1)
+	case []time.Time:
+		quickSortTime(v, 0, len(v)-1)
+	case []time.Duration:
+		quickSortDuration(v, 0, len(v)-1)
+	case []net.IP:
+		quickSortIP(v, 0, len(v)-1)
+	case []net.HardwareAddr:
+		quickSortMac(v, 0, len(v)-1)
+	case []interface{}:
+		quickSortInterface(v, 0, len(v)-1)
+	}
+}
+
+func Uniq(list interface{}) []interface{} {
+	out := []interface{}{}
+	switch v := list.(type) {
+	case []byte:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(byte) != val {
+				out = append(out, val)
+			}
+		}
+	case [][]byte:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || string(out[len(out)-1].([]byte)) != string(val) {
+				out = append(out, val)
+			}
+		}
+	case []bool:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(bool) != val {
+				out = append(out, val)
+			}
+		}
+	case []int:
+		sort.Ints(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(int) != val {
+				out = append(out, val)
+			}
+		}
+	case []int8:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(int8) != val {
+				out = append(out, val)
+			}
+		}
+	case []int16:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(int16) != val {
+				out = append(out, val)
+			}
+		}
+	case []int32:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(int32) != val {
+				out = append(out, val)
+			}
+		}
+	case []int64:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(int64) != val {
+				out = append(out, val)
+			}
+		}
+	case []uint:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(uint) != val {
+				out = append(out, val)
+			}
+		}
+	case []uint16:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(uint16) != val {
+				out = append(out, val)
+			}
+		}
+	case []uint32:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(uint32) != val {
+				out = append(out, val)
+			}
+		}
+	case []uint64:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(uint64) != val {
+				out = append(out, val)
+			}
+		}
+	case []float32:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(float32) != val {
+				out = append(out, val)
+			}
+		}
+	case []float64:
+		sort.Float64s(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(float64) != val {
+				out = append(out, val)
+			}
+		}
+	case []string:
+		sort.Strings(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(string) != val {
+				out = append(out, val)
+			}
+		}
+	case []time.Time:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(time.Time) != val {
+				out = append(out, val)
+			}
+		}
+	case []time.Duration:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(time.Duration) != val {
+				out = append(out, val)
+			}
+		}
+	case []net.IP:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(net.IP).String() != val.String() {
+				out = append(out, val)
+			}
+		}
+	case []net.HardwareAddr:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1].(net.HardwareAddr).String() != val.String() {
+				out = append(out, val)
+			}
+		}
+	case []interface{}:
+		QuickSort(v)
+		for _, val := range v {
+			if len(out) == 0 || out[len(out)-1] != val {
+				out = append(out, val)
+			}
+		}
+	}
+
+	return out
+}
+
+func Max(list interface{}) interface{} {
+	var out interface{}
+	switch v := list.(type) {
+	case []byte:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(byte) {
+				out = val
+			}
+		}
+	case [][]byte:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if string(val) > string(out.([]byte)) {
+				var tmp []byte
+				copy(tmp, val)
+				out = tmp
+			}
+		}
+	case []bool:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val && !out.(bool) {
+				out = val
+			}
+		}
+	case []int:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(int) {
+				out = val
+			}
+		}
+	case []int8:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(int8) {
+				out = val
+			}
+		}
+	case []int16:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(int16) {
+				out = val
+			}
+		}
+	case []int32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(int32) {
+				out = val
+			}
+		}
+	case []int64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(int64) {
+				out = val
+			}
+		}
+	case []uint:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(uint) {
+				out = val
+			}
+		}
+	case []uint16:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(uint16) {
+				out = val
+			}
+		}
+	case []uint32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(uint32) {
+				out = val
+			}
+		}
+	case []uint64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(uint64) {
+				out = val
+			}
+		}
+	case []float32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(float32) {
+				out = val
+			}
+		}
+	case []float64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(float64) {
+				out = val
+			}
+		}
+	case []string:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(string) {
+				out = val
+			}
+		}
+	case []time.Time:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.After(out.(time.Time)) {
+				out = val
+			}
+		}
+	case []time.Duration:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val > out.(time.Duration) {
+				out = val
+			}
+		}
+	case []net.IP:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.String() > out.(net.IP).String() {
+				out = val
+			}
+		}
+	case []net.HardwareAddr:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.String() > out.(net.HardwareAddr).String() {
+				out = val
+			}
+		}
+	case []interface{}:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if compareInterface(val, out) > 0 {
+				out = val
+			}
+		}
+	}
+
+	return out
+}
+
+func Min(list interface{}) interface{} {
+	var out interface{}
+	switch v := list.(type) {
+	case []byte:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(byte) {
+				out = val
+			}
+		}
+	case [][]byte:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if string(val) < string(out.([]byte)) {
+				var tmp []byte
+				copy(tmp, val)
+				out = tmp
+			}
+		}
+	case []bool:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if !val && out.(bool) {
+				out = val
+			}
+		}
+	case []int:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(int) {
+				out = val
+			}
+		}
+	case []int8:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(int8) {
+				out = val
+			}
+		}
+	case []int16:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(int16) {
+				out = val
+			}
+		}
+	case []int32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(int32) {
+				out = val
+			}
+		}
+	case []int64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(int64) {
+				out = val
+			}
+		}
+	case []uint:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(uint) {
+				out = val
+			}
+		}
+	case []uint16:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(uint16) {
+				out = val
+			}
+		}
+	case []uint32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(uint32) {
+				out = val
+			}
+		}
+	case []uint64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(uint64) {
+				out = val
+			}
+		}
+	case []float32:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(float32) {
+				out = val
+			}
+		}
+	case []float64:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(float64) {
+				out = val
+			}
+		}
+	case []string:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(string) {
+				out = val
+			}
+		}
+	case []time.Time:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.Before(out.(time.Time)) {
+				out = val
+			}
+		}
+	case []time.Duration:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val < out.(time.Duration) {
+				out = val
+			}
+		}
+	case []net.IP:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.String() < out.(net.IP).String() {
+				out = val
+			}
+		}
+	case []net.HardwareAddr:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if val.String() < out.(net.HardwareAddr).String() {
+				out = val
+			}
+		}
+	case []interface{}:
+		for idx, val := range v {
+			if idx == 0 {
+				out = val
+			} else if compareInterface(val, out) < 0 {
+				out = val
+			}
+		}
+	}
+
+	return out
+}
+
+// traverse from start to end with step
+func Iter(v ...int) <-chan int {
+	start := 0
+	end := start
+	step := 1
+	c := make(chan int)
+	if len(v) == 1 {
+		end = v[0]
+	} else if len(v) == 2 {
+		start = v[0]
+		end = v[1]
+	} else if len(v) > 2 {
+		start = v[0]
+		end = v[1]
+		step = v[2]
+	}
+
+	go func() {
+		for start < end {
+			c <- start
+			start += step
+		}
+		close(c)
+	}()
+	return c
+}
+
+func IterS(v ...int) []int {
+	start := 0
+	end := start
+	step := 1
+	s := []int{}
+	if len(v) == 1 {
+		end = v[0]
+	} else if len(v) == 2 {
+		start = v[0]
+		end = v[1]
+	} else if len(v) > 2 {
+		start = v[0]
+		end = v[1]
+		step = v[2]
+	}
+
+	for start < end {
+		s = append(s, start)
+		start += step
+	}
+
+	return s
+}
+
+func Reverse(list interface{}) []interface{} {
+	val := reflect.ValueOf(list)
+	len := val.Len()
+	out := make([]interface{}, len)
+	if val.Kind() == reflect.Slice {
+		for i := 0; i < len; i++ {
+			out[len-1-i] = val.Index(i).Interface()
+		}
+	}
+	return out
+}
+
+func Index(list interface{}, v interface{}) []int {
+	out := []int{}
+
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice {
+		for i := 0; i < val.Len(); i++ {
+			if val.Index(i).Interface() == v {
+				out = append(out, i)
+			}
+		}
+	}
+
+	return out
+}
+
+func Remove(list interface{}, v interface{}) []interface{} {
+	out := []interface{}{}
+
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice {
+		for i := 0; i < val.Len(); i++ {
+			if val.Index(i).Interface() != v {
+				out = append(out, val.Index(i).Interface())
+			}
+		}
+	}
+	return out
+}
+
+func RemoveAt(list interface{}, idx ...int) []interface{} {
+	offset := 1
+	out := []interface{}{}
+	index := 0
+
+	if len(idx) > 0 {
+		index = idx[0]
+	}
+	if len(idx) > 1 {
+		offset = idx[1]
+	}
+
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice {
+		for i := 0; i < val.Len(); i++ {
+			if i < index || i >= index+offset {
+				out = append(out, val.Index(i).Interface())
+			}
+		}
+	}
+	return out
+}
+
+func Filter(list interface{}, fn func(interface{}) bool) []interface{} {
+	var out []interface{}
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice {
+		for i := 0; i < val.Len(); i++ {
+			v := val.Index(i).Interface()
+			if fn(v) {
+				out = append(out, v)
+			}
+		}
+	}
+
+	return out
+}
+
+func Strlen(str string) int {
+	return len([]rune(str))
+}
+
+func Substr(s string, pos, length int) string {
+	runes := []rune(s)
+	l := pos + length
+	if l > len(runes) {
+		l = len(runes)
+	}
+	return string(runes[pos:l])
+}
+
+func HumanSize(b uint64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%dB", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.2f%ciB", float64(b)/float64(div), "KMGTPEZY"[exp])
+}
+
+func ByteSize(str string) (uint64, error) {
+	i := strings.IndexFunc(str, func(r rune) bool {
+		return r != '.' && !unicode.IsDigit(r)
+	})
+	var multiplier float64 = 1
+	var sizeSuffixes = "BKMGTPEZY"
+	if i > 0 {
+		suffix := str[i:]
+		multiplier = 0
+		for j := 0; j < len(sizeSuffixes); j++ {
+			base := string(sizeSuffixes[j])
+			// M, MB, or MiB are all valid.
+			switch suffix {
+			case base, base + "B", base + "iB":
+				sz := 1 << uint(j*10)
+				multiplier = float64(sz)
+				break
+			}
+		}
+		if multiplier == 0 {
+			return 0, fmt.Errorf("invalid multiplier suffix %q, expected one of %s", suffix, []byte(sizeSuffixes))
+		}
+		str = str[:i]
+	}
+
+	val, err := strconv.ParseFloat(str, 64)
+	if err != nil || val < 0 {
+		return 0, fmt.Errorf("expected a non-negative number, got %q", str)
+	}
+	val *= multiplier
+	return uint64(math.Ceil(val)), nil
+}
+
+func ReadFile(fpath string) <-chan string {
+	f, err := os.Open(fpath)
+	if err != nil {
+		panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+	}
+	//defer f.Close()
+
+	c := make(chan string)
+	go func(fl *os.File) {
+		buf := bufio.NewScanner(fl)
+		defer fl.Close()
+
+		for {
+			if !buf.Scan() {
+				break
+			}
+			c <- buf.Text()
+		}
+		close(c)
+	}(f)
+
+	return c
+}
+
+func ReadFileAll(fpath string) []byte {
+	f, err := os.Open(fpath)
+	if err != nil {
+		panic(fmt.Sprintf("open file %s fail: %s", fpath, err.Error()))
+	}
+	defer f.Close()
+
+	bytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+	}
+
+	return bytes
+}
+
+func WriteFile(fpath string, data []byte, append ...bool) error {
+	mode := os.O_RDWR | os.O_CREATE
+	if len(append) > 0 && append[0] {
+		mode = mode | os.O_APPEND
+	} else {
+		mode = mode | os.O_TRUNC
+	}
+	file, err := os.OpenFile(fpath, mode, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	_, err = writer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	writer.Flush()
+	return nil
+}
+
+func WordFrequency(fpath string, order bool, analysis func(string) []string) [][2]interface{} {
+	var wordFrequencyMap = make(map[string]int)
+
+	for line := range ReadFile(fpath) {
+		var arr []string
+		if analysis != nil {
+			arr = analysis(line)
+		} else {
+			arr = strings.FieldsFunc(line, func(c rune) bool {
+				if !unicode.IsLetter(c) && !unicode.IsNumber(c) {
+					return true
+				}
+				return false
+			})
+		}
+
+		for _, v := range arr {
+			if _, ok := wordFrequencyMap[v]; ok {
+				wordFrequencyMap[v] = wordFrequencyMap[v] + 1
+			} else {
+				wordFrequencyMap[v] = 1
+			}
+		}
+	}
+
+	var wordFrequency [][2]interface{}
+	for k, v := range wordFrequencyMap {
+		wordFrequency = append(wordFrequency, [2]interface{}{k, v})
+	}
+
+	if order {
+		sort.Slice(wordFrequency, func(i, j int) bool {
+			if wordFrequency[i][1].(int) > wordFrequency[j][1].(int) {
+				return true
+			} else if wordFrequency[i][1].(int) == wordFrequency[j][1].(int) {
+				if wordFrequency[i][0].(string) < wordFrequency[j][0].(string) {
+					return true
+				}
+			}
+			return false
+		})
+	}
+
+	return wordFrequency
+}
+
+func RandomString(n int, src ...byte) string {
+	rand.Seed(time.Now().UnixNano())
+	if len(src) == 0 {
+		src = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	}
+	idxBits := 6
+	idxMask := 1<<idxBits - 1
+	idxMax := 63 / idxBits
+	b := make([]byte, n)
+
+	for i, cache, remain := n-1, rand.Int63(), idxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = rand.Int63(), idxMax
+		}
+		if idx := int(cache) & idxMask; idx < len(src) {
+			b[i] = src[idx]
+			i--
+		}
+		cache >>= idxBits
+		remain--
+	}
+
+	return string(b)
+}
+
+func Ping(ip string) bool {
+	type ICMP struct {
+		Type        uint8
+		Code        uint8
+		Checksum    uint16
+		Identifier  uint16
+		SequenceNum uint16
+	}
+
+	icmp := ICMP{
+		Type: 8,
+	}
+
+	recvBuf := make([]byte, 32)
+	var buffer bytes.Buffer
+
+	_ = binary.Write(&buffer, binary.BigEndian, icmp)
+	icmp.Checksum = checkSum(buffer.Bytes())
+	buffer.Reset()
+	_ = binary.Write(&buffer, binary.BigEndian, icmp)
+
+	Time, _ := time.ParseDuration("2s")
+	conn, err := net.DialTimeout("ip4:icmp", ip, Time)
+	if err != nil {
+		return exec.Command("ping", ip, "-c", "2", "-i", "1", "-W", "3").Run() == nil
+	}
+	_, err = conn.Write(buffer.Bytes())
+	if err != nil {
+		return false
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 2))
+	num, err := conn.Read(recvBuf)
+	if err != nil {
+		return false
+	}
+
+	_ = conn.SetReadDeadline(time.Time{})
+
+	return string(recvBuf[0:num]) != ""
+}
+
+func IPv4() []string {
+	out := []string{"127.0.0.1"}
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, address := range addrs {
+			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+				out = append(out, ipnet.IP.String())
+			}
+		}
+	}
+	return out
+}
+
+func Hosts(cidr string) []string {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil
+	}
+
+	var ips []string
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); {
+		ips = append(ips, ip.String())
+
+		for j := len(ip) - 1; j >= 0; j-- {
+			ip[j]++
+			if ip[j] > 0 {
+				break
+			}
+		}
+	}
+
+	if len(ips) < 2 {
+		return []string{}
+	}
+	return ips[1 : len(ips)-1]
+}
+
+func TimeNow() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+func StampNow() int64 {
+	return time.Now().Unix()
+}
+
+func Time2Stamp(t string) int64 {
+	stamp, _ := time.ParseInLocation("2006-01-02 15:04:05", t, time.Local)
+	return stamp.Unix()
+}
+
+func Stamp2Time(t int64) string {
+	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+}
+
+// Gzip compresses the given data
+func Gzip(data []byte) []byte {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		panic(err)
+	}
+	if err := w.Close(); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+// Gunzip uncompresses the given data
+func Gunzip(data []byte) ([]byte, error) {
+	r, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(r)
+}
+
+func Request(url string, creds ...string) (int, []byte) {
+	client := http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	req, _ := http.NewRequest("GET", url, nil)
+
+	req.Header.Del("Cookie")
+	req.Header.Del("Authorization")
+	if len(creds) > 1 {
+		req.SetBasicAuth(creds[0], creds[1])
+	} else if len(creds) == 1 {
+		req.Header.Add("Authorization", "Bearer "+creds[0])
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 600, []byte(fmt.Sprintf("request %s failed: %s", url, err.Error()))
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 600, []byte(fmt.Sprintf("read response %s failed: %s", url, err.Error()))
+	}
+
+	return resp.StatusCode, bodyBytes
 }

@@ -672,32 +672,32 @@ func (c *SafeContext) Obj(key string, o interface{}) *SafeContext {
 	return c
 }
 
-// IPAddr adds IPv4 or IPv6 Address
-func (c *SafeContext) Ip(key string, ip net.IP) *SafeContext {
+// IP adds IPv4 or IPv6 Address
+func (c *SafeContext) IP(key string, ip net.IP) *SafeContext {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buf = appendIPAddr(appendKey(c.buf, key), ip)
+	c.buf = appendIP(appendKey(c.buf, key), ip)
 
 	return c
 }
 
-// IPPrefix adds IPv4 or IPv6 Prefix (address and mask)
-func (c *SafeContext) Ipp(key string, pfx net.IPNet) *SafeContext {
+// IPNet adds IPv4 or IPv6 Prefix (address and mask)
+func (c *SafeContext) IPNet(key string, ipn net.IPNet) *SafeContext {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buf = appendIPPrefix(appendKey(c.buf, key), pfx)
+	c.buf = appendIPNet(appendKey(c.buf, key), ipn)
 
 	return c
 }
 
-// MACAddr adds MAC address
-func (c *SafeContext) Mac(key string, ha net.HardwareAddr) *SafeContext {
+// Mac adds MAC address
+func (c *SafeContext) Mac(key string, mac net.HardwareAddr) *SafeContext {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buf = appendMACAddr(appendKey(c.buf, key), ha)
+	c.buf = appendMac(appendKey(c.buf, key), mac)
 
 	return c
 }
