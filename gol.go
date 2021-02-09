@@ -14,17 +14,18 @@ import (
 )
 
 type LogHook func(int, *[]byte) bool
-type F map[string]interface{}
+type Void = struct{}
+type M = map[string]interface{}
 
 // convert map[string]interface{} or F object to string
-func (f *F) Jsonify() string {
-	return Jsonify(*f)
-}
+// func (f M) Jsonify() string {
+// 	return Jsonify(f)
+// }
 
 // get value of the path key from the map[string]interface{} or F object
-func (f *F) Jsquery(keyPath string) interface{} {
-	return Jsquery(Jsonify(*f), keyPath)
-}
+// func (f M) Jsquery(keyPath string) interface{} {
+// 	return Jsquery(Jsonify(f), keyPath)
+// }
 
 // log outpu interface
 type Printer interface {
@@ -148,12 +149,12 @@ func Flush() {
 }
 
 // create a context with fields using default logger
-func With(ctx F) *Context {
+func With(ctx M) *Context {
 	return std.With(ctx)
 }
 
 // create a thread-safe context with fields using default logger
-func WithSafe(ctx F) *SafeContext {
+func WithSafe(ctx M) *SafeContext {
 	return std.WithSafe(ctx)
 }
 
@@ -249,7 +250,7 @@ func MsgKey(key string) *Logger {
 // output error log using default logger
 func Error(v ...interface{}) Printer {
 	if std.lvcheck(ERROR) {
-		std.Output(ERROR, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(ERROR, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -257,7 +258,7 @@ func Error(v ...interface{}) Printer {
 // output format error log using default logger
 func Errorf(format string, v ...interface{}) Printer {
 	if std.lvcheck(ERROR) {
-		std.Output(ERROR, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(ERROR, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -265,7 +266,7 @@ func Errorf(format string, v ...interface{}) Printer {
 // output warn log using default logger
 func Warn(v ...interface{}) Printer {
 	if std.lvcheck(WARN) {
-		std.Output(WARN, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(WARN, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -273,7 +274,7 @@ func Warn(v ...interface{}) Printer {
 // output format warn log using default logger
 func Warnf(format string, v ...interface{}) Printer {
 	if std.lvcheck(WARN) {
-		std.Output(WARN, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(WARN, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -281,7 +282,7 @@ func Warnf(format string, v ...interface{}) Printer {
 // output notice log using default logger
 func Notic(v ...interface{}) Printer {
 	if std.lvcheck(NOTIC) {
-		std.Output(NOTIC, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(NOTIC, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -289,7 +290,7 @@ func Notic(v ...interface{}) Printer {
 // output format notice log using default logger
 func Noticf(format string, v ...interface{}) Printer {
 	if std.lvcheck(NOTIC) {
-		std.Output(NOTIC, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(NOTIC, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -297,7 +298,7 @@ func Noticf(format string, v ...interface{}) Printer {
 // output info log using default logger
 func Info(v ...interface{}) Printer {
 	if std.lvcheck(INFO) {
-		std.Output(INFO, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(INFO, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -305,7 +306,7 @@ func Info(v ...interface{}) Printer {
 // output format info log using default logger
 func Infof(format string, v ...interface{}) Printer {
 	if std.lvcheck(INFO) {
-		std.Output(INFO, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(INFO, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -313,7 +314,7 @@ func Infof(format string, v ...interface{}) Printer {
 // output debug log using default logger
 func Debug(v ...interface{}) Printer {
 	if std.lvcheck(DEBUG) {
-		std.Output(DEBUG, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(DEBUG, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -321,7 +322,7 @@ func Debug(v ...interface{}) Printer {
 // output format debug log using default logger
 func Debugf(format string, v ...interface{}) Printer {
 	if std.lvcheck(DEBUG) {
-		std.Output(DEBUG, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(DEBUG, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -329,7 +330,7 @@ func Debugf(format string, v ...interface{}) Printer {
 // output trace log using default logger
 func Trace(v ...interface{}) Printer {
 	if std.lvcheck(TRACE) {
-		std.Output(TRACE, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(TRACE, 2, nil, fmt.Sprint(v...), true)
 	}
 	return std
 }
@@ -337,7 +338,7 @@ func Trace(v ...interface{}) Printer {
 // output format trace log using default logger
 func Tracef(format string, v ...interface{}) Printer {
 	if std.lvcheck(TRACE) {
-		std.Output(TRACE, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(TRACE, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return std
 }
@@ -345,7 +346,7 @@ func Tracef(format string, v ...interface{}) Printer {
 // exit with code 1 after output fatal log using default logger
 func Fatal(v ...interface{}) {
 	if std.lvcheck(FATAL) {
-		std.Output(FATAL, 2, nil, fmt.Sprint(v...), true)
+		_ = std.Output(FATAL, 2, nil, fmt.Sprint(v...), true)
 	}
 	os.Exit(1)
 }
@@ -353,7 +354,7 @@ func Fatal(v ...interface{}) {
 // exit with code 1 after output format fatal log using default logger
 func Fatalf(format string, v ...interface{}) {
 	if std.lvcheck(FATAL) {
-		std.Output(FATAL, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = std.Output(FATAL, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	os.Exit(1)
 }
@@ -362,7 +363,7 @@ func Fatalf(format string, v ...interface{}) {
 func Panic(v ...interface{}) {
 	s := fmt.Sprint(v...)
 	if std.lvcheck(PANIC) {
-		std.Output(PANIC, 2, nil, s, true)
+		_ = std.Output(PANIC, 2, nil, s, true)
 	}
 	panic(s)
 }
@@ -371,7 +372,7 @@ func Panic(v ...interface{}) {
 func Panicf(format string, v ...interface{}) {
 	s := fmt.Sprintf(format, v...)
 	if std.lvcheck(PANIC) {
-		std.Output(PANIC, 2, nil, s, true)
+		_ = std.Output(PANIC, 2, nil, s, true)
 	}
 	panic(s)
 }
@@ -381,7 +382,7 @@ func Log(level interface{}, v ...interface{}) Printer {
 	s := fmt.Sprint(v...)
 	lv := parseLevel(level)
 	if std.lvcheck(lv) {
-		std.Output(lv, 2, nil, s, false)
+		_ = std.Output(lv, 2, nil, s, false)
 	}
 	switch lv {
 	case FATAL:
@@ -397,7 +398,7 @@ func Logf(level interface{}, format string, v ...interface{}) Printer {
 	s := fmt.Sprintf(format, v...)
 	lv := parseLevel(level)
 	if std.lvcheck(lv) {
-		std.Output(lv, 2, nil, s, false)
+		_ = std.Output(lv, 2, nil, s, false)
 	}
 	switch lv {
 	case FATAL:
@@ -460,7 +461,7 @@ func (l *Logger) Flush() {
 }
 
 // create a context with fields
-func (l *Logger) With(fd F) *Context {
+func (l *Logger) With(fd M) *Context {
 	// 	if len(fd) == 0 {
 	// 		return &Context{loggers: []*Logger{l}, buf: nil}
 	// 	} else {
@@ -469,7 +470,7 @@ func (l *Logger) With(fd F) *Context {
 }
 
 // create a thread-safe context with fields
-func (l *Logger) WithSafe(fd F) *SafeContext {
+func (l *Logger) WithSafe(fd M) *SafeContext {
 	// if len(fd) == 0 {
 	// 	return &SafeContext{loggers: []*Logger{l}, buf: nil}
 	// } else {
@@ -572,10 +573,7 @@ func (l *Logger) DelFlag(flag int) *Logger {
 
 // if the logger has this flag
 func (l *Logger) HasFlag(flag int) bool {
-	if l.flag&flag != 0 {
-		return true
-	}
-	return false
+	return l.flag&flag != 0
 }
 
 // set prefix key name of json log
@@ -669,7 +667,7 @@ func (l *Logger) MsgKey(key string) *Logger {
 // output error log
 func (l *Logger) Error(v ...interface{}) Printer {
 	if l.lvcheck(ERROR) {
-		l.Output(ERROR, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(ERROR, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -677,7 +675,7 @@ func (l *Logger) Error(v ...interface{}) Printer {
 // output format error log
 func (l *Logger) Errorf(format string, v ...interface{}) Printer {
 	if l.lvcheck(ERROR) {
-		l.Output(ERROR, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(ERROR, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -685,7 +683,7 @@ func (l *Logger) Errorf(format string, v ...interface{}) Printer {
 // output warn log
 func (l *Logger) Warn(v ...interface{}) Printer {
 	if l.lvcheck(WARN) {
-		l.Output(WARN, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(WARN, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -693,7 +691,7 @@ func (l *Logger) Warn(v ...interface{}) Printer {
 // output format warn log
 func (l *Logger) Warnf(format string, v ...interface{}) Printer {
 	if l.lvcheck(WARN) {
-		l.Output(WARN, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(WARN, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -701,7 +699,7 @@ func (l *Logger) Warnf(format string, v ...interface{}) Printer {
 // output notice log
 func (l *Logger) Notic(v ...interface{}) Printer {
 	if l.lvcheck(NOTIC) {
-		l.Output(NOTIC, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(NOTIC, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -709,7 +707,7 @@ func (l *Logger) Notic(v ...interface{}) Printer {
 // output format notic log
 func (l *Logger) Noticf(format string, v ...interface{}) Printer {
 	if l.lvcheck(NOTIC) {
-		l.Output(NOTIC, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(NOTIC, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -717,7 +715,7 @@ func (l *Logger) Noticf(format string, v ...interface{}) Printer {
 // output info log
 func (l *Logger) Info(v ...interface{}) Printer {
 	if l.lvcheck(INFO) {
-		l.Output(INFO, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(INFO, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -725,7 +723,7 @@ func (l *Logger) Info(v ...interface{}) Printer {
 // output format info log
 func (l *Logger) Infof(format string, v ...interface{}) Printer {
 	if l.lvcheck(INFO) {
-		l.Output(INFO, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(INFO, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -733,7 +731,7 @@ func (l *Logger) Infof(format string, v ...interface{}) Printer {
 // output debug log
 func (l *Logger) Debug(v ...interface{}) Printer {
 	if l.lvcheck(DEBUG) {
-		l.Output(DEBUG, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(DEBUG, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -741,7 +739,7 @@ func (l *Logger) Debug(v ...interface{}) Printer {
 // output format debug log
 func (l *Logger) Debugf(format string, v ...interface{}) Printer {
 	if l.lvcheck(DEBUG) {
-		l.Output(DEBUG, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(DEBUG, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -749,7 +747,7 @@ func (l *Logger) Debugf(format string, v ...interface{}) Printer {
 // output trace log
 func (l *Logger) Trace(v ...interface{}) Printer {
 	if l.lvcheck(TRACE) {
-		l.Output(TRACE, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(TRACE, 2, nil, fmt.Sprint(v...), true)
 	}
 	return l
 }
@@ -757,7 +755,7 @@ func (l *Logger) Trace(v ...interface{}) Printer {
 // output format trace log
 func (l *Logger) Tracef(format string, v ...interface{}) Printer {
 	if l.lvcheck(TRACE) {
-		l.Output(TRACE, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(TRACE, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	return l
 }
@@ -765,7 +763,7 @@ func (l *Logger) Tracef(format string, v ...interface{}) Printer {
 // exit with code 1 after output fatal log
 func (l *Logger) Fatal(v ...interface{}) {
 	if l.lvcheck(FATAL) {
-		l.Output(FATAL, 2, nil, fmt.Sprint(v...), true)
+		_ = l.Output(FATAL, 2, nil, fmt.Sprint(v...), true)
 	}
 	os.Exit(1)
 }
@@ -773,7 +771,7 @@ func (l *Logger) Fatal(v ...interface{}) {
 // exit with code 1 after output format fatal log
 func (l *Logger) Fatalf(format string, v ...interface{}) {
 	if l.lvcheck(FATAL) {
-		l.Output(FATAL, 2, nil, fmt.Sprintf(format, v...), true)
+		_ = l.Output(FATAL, 2, nil, fmt.Sprintf(format, v...), true)
 	}
 	os.Exit(1)
 }
@@ -782,7 +780,7 @@ func (l *Logger) Fatalf(format string, v ...interface{}) {
 func (l *Logger) Panic(v ...interface{}) {
 	s := fmt.Sprint(v...)
 	if l.lvcheck(PANIC) {
-		l.Output(PANIC, 2, nil, s, true)
+		_ = l.Output(PANIC, 2, nil, s, true)
 	}
 	panic(s)
 }
@@ -791,7 +789,7 @@ func (l *Logger) Panic(v ...interface{}) {
 func (l *Logger) Panicf(format string, v ...interface{}) {
 	s := fmt.Sprintf(format, v...)
 	if l.lvcheck(PANIC) {
-		l.Output(PANIC, 2, nil, s, true)
+		_ = l.Output(PANIC, 2, nil, s, true)
 	}
 	panic(s)
 }
@@ -801,7 +799,7 @@ func (l *Logger) Log(level interface{}, v ...interface{}) Printer {
 	s := fmt.Sprint(v...)
 	lv := parseLevel(level)
 	if l.lvcheck(lv) {
-		l.Output(lv, 2, nil, s, false)
+		_ = l.Output(lv, 2, nil, s, false)
 	}
 	switch lv {
 	case FATAL:
@@ -817,7 +815,7 @@ func (l *Logger) Logf(level interface{}, format string, v ...interface{}) Printe
 	s := fmt.Sprintf(format, v...)
 	lv := parseLevel(level)
 	if l.lvcheck(lv) {
-		l.Output(lv, 2, nil, s, false)
+		_ = l.Output(lv, 2, nil, s, false)
 	}
 	switch lv {
 	case FATAL:
@@ -1072,7 +1070,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		*buf = append(*buf, ' ')
 	}
 
-	if fd != nil && len(fd) > 0 {
+	if len(fd) > 0 {
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, l.keys.ctxKey...)
 			//replaceDoubleQuote(buf, fd)
@@ -1275,10 +1273,7 @@ func (l *Logger) notisfy() {
 
 // verify whather the log should be output by compare the level config
 func (l *Logger) lvcheck(lv int) bool {
-	if l.level >= lv {
-		return true
-	}
-	return false
+	return l.level >= lv
 }
 
 // save log to disk

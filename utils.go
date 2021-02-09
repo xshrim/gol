@@ -1,20 +1,34 @@
 package gol
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/md5"
+	rd "crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
+	"math/big"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -298,7 +312,7 @@ func colorRequestMethod(mtd string) string {
 	return string(buff)
 }
 
-func map2json(dst []byte, fds F) []byte {
+func map2json(dst []byte, fds M) []byte {
 	for k, v := range fds {
 		// append key
 		dst = appendKey(dst, k)
@@ -487,30 +501,30 @@ func tojson(dst []byte, v interface{}) []byte {
 			dst = dst[:len(dst)-1]
 		}
 		dst = append(dst, ']')
-	case F:
-		dst = append(dst, '{')
-		for k, v := range val {
-			dst = appendKey(dst, k)
-			dst = tojson(dst, v)
-		}
-		dst = append(dst, '}')
-	case []F:
-		dst = append(dst, '[')
-		for _, f := range val {
-			if dst[len(dst)-1] == '[' || dst[len(dst)-1] == ',' {
-				dst = append(dst, '{')
-			}
-			for k, v := range f {
-				dst = appendKey(dst, k)
-				dst = tojson(dst, v)
-			}
-			dst = append(dst, '}')
-			dst = append(dst, ',')
-		}
-		if len(val) > 0 {
-			dst = dst[:len(dst)-1]
-		}
-		dst = append(dst, ']')
+	// case M:
+	// 	dst = append(dst, '{')
+	// 	for k, v := range val {
+	// 		dst = appendKey(dst, k)
+	// 		dst = tojson(dst, v)
+	// 	}
+	// 	dst = append(dst, '}')
+	// case []M:
+	// 	dst = append(dst, '[')
+	// 	for _, f := range val {
+	// 		if dst[len(dst)-1] == '[' || dst[len(dst)-1] == ',' {
+	// 			dst = append(dst, '{')
+	// 		}
+	// 		for k, v := range f {
+	// 			dst = appendKey(dst, k)
+	// 			dst = tojson(dst, v)
+	// 		}
+	// 		dst = append(dst, '}')
+	// 		dst = append(dst, ',')
+	// 	}
+	// 	if len(val) > 0 {
+	// 		dst = dst[:len(dst)-1]
+	// 	}
+	// 	dst = append(dst, ']')
 	case []interface{}:
 		dst = append(dst, '[')
 		for _, s := range val {
@@ -579,11 +593,11 @@ func Imapify(data interface{}) map[string]interface{} {
 	case []byte:
 		err = json.Unmarshal(v, &m)
 	default:
-		d, err := json.Marshal(v)
-		if err != nil {
+		if d, er := json.Marshal(v); er != nil {
 			return nil
+		} else {
+			err = json.Unmarshal(d, &m)
 		}
-		err = json.Unmarshal(d, &m)
 	}
 
 	if err != nil {
@@ -968,7 +982,7 @@ func appendStrComplex(dst []byte, s string, i int) []byte {
 		case '\t':
 			dst = append(dst, '\\', 't')
 		default:
-			dst = append(dst, '\\', 'u', '0', '0', hex[b>>4], hex[b&0xF])
+			dst = append(dst, '\\', 'u', '0', '0', hexs[b>>4], hexs[b&0xF])
 		}
 		i++
 		start = i
@@ -1018,7 +1032,7 @@ func appendBytesComplex(dst []byte, s []byte, i int) []byte {
 		case '\t':
 			dst = append(dst, '\\', 't')
 		default:
-			dst = append(dst, '\\', 'u', '0', '0', hex[b>>4], hex[b&0xF])
+			dst = append(dst, '\\', 'u', '0', '0', hexs[b>>4], hexs[b&0xF])
 		}
 		i++
 		start = i
@@ -1071,7 +1085,7 @@ func appendBytes(dst []byte, bs []byte) []byte {
 func appendHex(dst []byte, s []byte) []byte {
 	dst = append(dst, '"')
 	for _, v := range s {
-		dst = append(dst, hex[v>>4], hex[v&0x0f])
+		dst = append(dst, hexs[v>>4], hexs[v&0x0f])
 	}
 	return append(dst, '"')
 }
@@ -2031,6 +2045,7 @@ func quickSortInterface(list []interface{}, low, high int) {
 	}
 }
 
+// sort various types of slices with quick sort algorithm
 func QuickSort(list interface{}) {
 	switch v := list.(type) {
 	case []byte:
@@ -2076,6 +2091,7 @@ func QuickSort(list interface{}) {
 	}
 }
 
+// remove duplicate elements in various types of slices
 func Uniq(list interface{}) []interface{} {
 	out := []interface{}{}
 	switch v := list.(type) {
@@ -2224,6 +2240,7 @@ func Uniq(list interface{}) []interface{} {
 	return out
 }
 
+// return the largest element in various types of slices
 func Max(list interface{}) interface{} {
 	var out interface{}
 	switch v := list.(type) {
@@ -2394,6 +2411,7 @@ func Max(list interface{}) interface{} {
 	return out
 }
 
+// return minimum element in various types of slices
 func Min(list interface{}) interface{} {
 	var out interface{}
 	switch v := list.(type) {
@@ -2564,7 +2582,7 @@ func Min(list interface{}) interface{} {
 	return out
 }
 
-// traverse from start to end with step
+// traverse from start to end with step by iterator
 func Iter(v ...int) <-chan int {
 	start := 0
 	end := start
@@ -2591,6 +2609,7 @@ func Iter(v ...int) <-chan int {
 	return c
 }
 
+// return integer slice range start to end with step
 func IterS(v ...int) []int {
 	start := 0
 	end := start
@@ -2615,48 +2634,166 @@ func IterS(v ...int) []int {
 	return s
 }
 
-func Reverse(list interface{}) []interface{} {
+// reverse elements in the slice or string
+func Reverse(list interface{}) interface{} {
 	val := reflect.ValueOf(list)
-	len := val.Len()
-	out := make([]interface{}, len)
-	if val.Kind() == reflect.Slice {
-		for i := 0; i < len; i++ {
-			out[len-1-i] = val.Index(i).Interface()
+	length := val.Len()
+	out := make([]interface{}, length)
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+		for i := 0; i < length; i++ {
+			out[length-1-i] = val.Index(i).Interface()
 		}
+	} else if val.Kind() == reflect.String {
+		r := []rune(list.(string))
+		for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+			r[i], r[j] = r[j], r[i]
+		}
+		return string(r)
 	}
 	return out
 }
 
+// return all indices of special element in the slice or string
 func Index(list interface{}, v interface{}) []int {
 	out := []int{}
 
 	val := reflect.ValueOf(list)
-	if val.Kind() == reflect.Slice {
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
 		for i := 0; i < val.Len(); i++ {
 			if val.Index(i).Interface() == v {
 				out = append(out, i)
 			}
 		}
+	} else if val.Kind() == reflect.String && reflect.ValueOf(v).Kind() == reflect.String {
+		src := list.(string)
+		sub := v.(string)
+		if len(sub) == 0 {
+			out = append(out, 0)
+		} else {
+			bf := 0
+			for {
+				if len(src) >= len(sub) {
+					if i := stringIndex(src, sub); i >= 0 {
+						out = append(out, i+bf)
+						bf += len(src[:i]) + len(sub)
+						src = src[i+len(sub):]
+					} else {
+						break
+					}
+				} else {
+					break
+				}
+			}
+		}
 	}
 
 	return out
 }
 
-func Remove(list interface{}, v interface{}) []interface{} {
+// split the slice or string
+func Split(list interface{}, v interface{}) []interface{} {
+	out := []interface{}{}
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+		tmps := []interface{}{}
+		for i := 0; i < val.Len(); i++ {
+			tmpv := val.Index(i).Interface()
+			if tmpv == v {
+				var dst []interface{}
+				dst = append(dst, tmps...)
+				if len(dst) > 0 {
+					out = append(out, dst)
+				}
+				tmps = []interface{}{}
+			} else {
+				tmps = append(tmps, tmpv)
+			}
+		}
+		if len(tmps) > 0 {
+			out = append(out, tmps)
+		}
+	} else if val.Kind() == reflect.String && reflect.ValueOf(v).Kind() == reflect.String {
+		src := list.(string)
+		sub := v.(string)
+		if len(sub) == 0 {
+			for _, r := range src {
+				out = append(out, string(r))
+			}
+		} else {
+			for {
+				if len(src) >= len(sub) {
+					if i := stringIndex(src, sub); i >= 0 {
+						if len(src[:i]) > 0 {
+							out = append(out, src[:i])
+						}
+						src = src[i+len(sub):]
+					} else {
+						break
+					}
+				} else {
+					break
+				}
+			}
+			if len(src) > 0 {
+				out = append(out, src)
+			}
+		}
+	}
+
+	return out
+}
+
+// return if special element is in the slice or string
+func Contain(list interface{}, v interface{}) bool {
+	val := reflect.ValueOf(list)
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+		for i := 0; i < val.Len(); i++ {
+			if val.Index(i).Interface() == v {
+				return true
+			}
+		}
+	} else if val.Kind() == reflect.String && reflect.ValueOf(v).Kind() == reflect.String {
+		return stringContainStr(list.(string), v.(string))
+	}
+
+	return false
+}
+
+// remove special element from the slice or string
+func Remove(list interface{}, v interface{}) interface{} {
 	out := []interface{}{}
 
 	val := reflect.ValueOf(list)
-	if val.Kind() == reflect.Slice {
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
 		for i := 0; i < val.Len(); i++ {
 			if val.Index(i).Interface() != v {
 				out = append(out, val.Index(i).Interface())
 			}
 		}
+	} else if val.Kind() == reflect.String && reflect.ValueOf(v).Kind() == reflect.String {
+		src := list.(string)
+		sub := v.(string)
+		if len(sub) == 0 {
+			return list
+		}
+		for {
+			if len(src) >= len(sub) {
+				if i := stringIndex(src, sub); i >= 0 {
+					src = src[:i] + src[i+len(sub):]
+				} else {
+					break
+				}
+			} else {
+				break
+			}
+		}
+		return src
 	}
 	return out
 }
 
-func RemoveAt(list interface{}, idx ...int) []interface{} {
+// remove the elements at special index from the slice or string
+func RemoveAt(list interface{}, idx ...int) interface{} {
 	offset := 1
 	out := []interface{}{}
 	index := 0
@@ -2669,35 +2806,50 @@ func RemoveAt(list interface{}, idx ...int) []interface{} {
 	}
 
 	val := reflect.ValueOf(list)
-	if val.Kind() == reflect.Slice {
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
 		for i := 0; i < val.Len(); i++ {
 			if i < index || i >= index+offset {
 				out = append(out, val.Index(i).Interface())
 			}
 		}
+	} else if val.Kind() == reflect.String {
+		src := list.(string)
+		if len(src) >= index+offset {
+			src = src[:index] + src[index+offset:]
+		}
+		return src
 	}
 	return out
 }
 
-func Filter(list interface{}, fn func(interface{}) bool) []interface{} {
+// return the elements meet the filter function in the slice or string
+func Filter(list interface{}, fn func(interface{}) bool) interface{} {
 	var out []interface{}
 	val := reflect.ValueOf(list)
-	if val.Kind() == reflect.Slice {
+	if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
 		for i := 0; i < val.Len(); i++ {
 			v := val.Index(i).Interface()
 			if fn(v) {
 				out = append(out, v)
 			}
 		}
+	} else if val.Kind() == reflect.String {
+		for _, r := range list.(string) {
+			if fn(r) {
+				out = append(out, string(r))
+			}
+		}
 	}
 
 	return out
 }
 
+// return rune length of the string
 func Strlen(str string) int {
 	return len([]rune(str))
 }
 
+// return substring by rune
 func Substr(s string, pos, length int) string {
 	runes := []rune(s)
 	l := pos + length
@@ -2707,6 +2859,7 @@ func Substr(s string, pos, length int) string {
 	return string(runes[pos:l])
 }
 
+// convert byte size to human readable format
 func HumanSize(b uint64) string {
 	const unit = 1024
 	if b < unit {
@@ -2720,6 +2873,7 @@ func HumanSize(b uint64) string {
 	return fmt.Sprintf("%.2f%ciB", float64(b)/float64(div), "KMGTPEZY"[exp])
 }
 
+// convert human readable string to byte size
 func ByteSize(str string) (uint64, error) {
 	i := strings.IndexFunc(str, func(r rune) bool {
 		return r != '.' && !unicode.IsDigit(r)
@@ -2753,6 +2907,7 @@ func ByteSize(str string) (uint64, error) {
 	return uint64(math.Ceil(val)), nil
 }
 
+// read file line by line
 func ReadFile(fpath string) <-chan string {
 	f, err := os.Open(fpath)
 	if err != nil {
@@ -2777,6 +2932,7 @@ func ReadFile(fpath string) <-chan string {
 	return c
 }
 
+// read the entire contents of the file
 func ReadFileAll(fpath string) []byte {
 	f, err := os.Open(fpath)
 	if err != nil {
@@ -2792,6 +2948,7 @@ func ReadFileAll(fpath string) []byte {
 	return bytes
 }
 
+// write to file
 func WriteFile(fpath string, data []byte, append ...bool) error {
 	mode := os.O_RDWR | os.O_CREATE
 	if len(append) > 0 && append[0] {
@@ -2815,6 +2972,7 @@ func WriteFile(fpath string, data []byte, append ...bool) error {
 	return nil
 }
 
+// count word frequency
 func WordFrequency(fpath string, order bool, analysis func(string) []string) [][2]interface{} {
 	var wordFrequencyMap = make(map[string]int)
 
@@ -2861,7 +3019,43 @@ func WordFrequency(fpath string, order bool, analysis func(string) []string) [][
 	return wordFrequency
 }
 
-func RandomString(n int, src ...byte) string {
+// generate random intergers
+func RandInt(count int, v ...int64) []int64 {
+	var min int64 = 0
+	var max int64 = 100
+
+	if len(v) == 1 {
+		max = v[0]
+	} else if len(v) > 1 {
+		min = v[0]
+		max = v[1]
+	}
+
+	out := []int64{}
+	if min > max {
+		return out
+	}
+
+	allCount := make(map[int64]Void)
+	maxBigInt := big.NewInt(max)
+	for {
+		i, _ := rd.Int(rd.Reader, maxBigInt)
+		number := i.Int64()
+		if i.Int64() >= min {
+			_, ok := allCount[number]
+			if !ok {
+				out = append(out, number)
+				allCount[number] = Void{}
+			}
+		}
+		if len(out) >= count {
+			return out
+		}
+	}
+}
+
+// generate random strings
+func RandString(count int, src ...byte) string {
 	rand.Seed(time.Now().UnixNano())
 	if len(src) == 0 {
 		src = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -2869,9 +3063,9 @@ func RandomString(n int, src ...byte) string {
 	idxBits := 6
 	idxMask := 1<<idxBits - 1
 	idxMax := 63 / idxBits
-	b := make([]byte, n)
+	b := make([]byte, count)
 
-	for i, cache, remain := n-1, rand.Int63(), idxMax; i >= 0; {
+	for i, cache, remain := count-1, rand.Int63(), idxMax; i >= 0; {
 		if remain == 0 {
 			cache, remain = rand.Int63(), idxMax
 		}
@@ -2886,6 +3080,7 @@ func RandomString(n int, src ...byte) string {
 	return string(b)
 }
 
+// ping ip or domain
 func Ping(ip string) bool {
 	type ICMP struct {
 		Type        uint8
@@ -2927,6 +3122,7 @@ func Ping(ip string) bool {
 	return string(recvBuf[0:num]) != ""
 }
 
+// get local ipv4 address
 func IPv4() []string {
 	out := []string{"127.0.0.1"}
 	if addrs, err := net.InterfaceAddrs(); err == nil {
@@ -2939,6 +3135,7 @@ func IPv4() []string {
 	return out
 }
 
+// get all ipv4 addresses in the range of the cidr
 func Hosts(cidr string) []string {
 	ip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
@@ -2963,24 +3160,28 @@ func Hosts(cidr string) []string {
 	return ips[1 : len(ips)-1]
 }
 
+// get current time
 func TimeNow() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
 
+// get current timestamp
 func StampNow() int64 {
 	return time.Now().Unix()
 }
 
+// convert time to timestamp
 func Time2Stamp(t string) int64 {
 	stamp, _ := time.ParseInLocation("2006-01-02 15:04:05", t, time.Local)
 	return stamp.Unix()
 }
 
+// convert timestamp to time
 func Stamp2Time(t int64) string {
 	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
 }
 
-// Gzip compresses the given data
+// gzip compresses the given data
 func Gzip(data []byte) []byte {
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
@@ -2993,7 +3194,7 @@ func Gzip(data []byte) []byte {
 	return buf.Bytes()
 }
 
-// Gunzip uncompresses the given data
+// gunzip uncompresses the given data
 func Gunzip(data []byte) ([]byte, error) {
 	r, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -3002,7 +3203,359 @@ func Gunzip(data []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func Request(url string, creds ...string) (int, []byte) {
+// archive target folder
+func Zip(source, target string, filter ...string) error {
+	var err error
+	if isAbs := filepath.IsAbs(source); !isAbs {
+		source, err = filepath.Abs(source)
+		if err != nil {
+			return err
+		}
+	}
+
+	zipfile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := zipfile.Close(); err != nil {
+			Errorf("file close error: %s, file: %s", err.Error(), zipfile.Name())
+		}
+	}()
+
+	zw := zip.NewWriter(zipfile)
+
+	defer func() {
+		if err := zw.Close(); err != nil {
+			Errorf("zipwriter close error: %s", err.Error())
+		}
+	}()
+
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	var baseDir string
+	if info.IsDir() {
+		baseDir = filepath.Base(source)
+	}
+
+	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+
+		if err != nil {
+			return err
+		}
+
+		if len(filter) > 0 {
+			ism, err := filepath.Match(filter[0], info.Name())
+
+			if err != nil {
+				return err
+			}
+
+			if ism {
+				return nil
+			}
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		if baseDir != "" {
+			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+		}
+
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Deflate
+		}
+
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if err := file.Close(); err != nil {
+				Errorf("file close error: %s, file: %s", err.Error(), file.Name())
+			}
+		}()
+		_, err = io.Copy(writer, file)
+
+		return err
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// unzip target archived file
+func Unzip(archive, target string) error {
+	reader, err := zip.OpenReader(archive)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
+	}
+
+	for _, file := range reader.File {
+		unzippath := filepath.Join(target, file.Name)
+		if file.FileInfo().IsDir() {
+			err := os.MkdirAll(unzippath, file.Mode())
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		fileReader, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer fileReader.Close()
+
+		targetFile, err := os.OpenFile(unzippath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+		defer targetFile.Close()
+
+		if _, err := io.Copy(targetFile, fileReader); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// retry
+func Retry(attempts int, sleep time.Duration, fn func() error) error {
+	if err := fn(); err != nil {
+		if err.Error() == "retry-stop" {
+			return err
+		}
+
+		if attempts--; attempts > 0 {
+			Warnf("retry func error: %s. attemps #%d after %s.", err.Error(), attempts, sleep)
+			time.Sleep(sleep)
+			return Retry(attempts, 2*sleep, fn)
+		}
+		return err
+	}
+	return nil
+}
+
+// base64 encode
+func Encode(src string) string {
+	return base64.StdEncoding.EncodeToString([]byte(src))
+}
+
+// base64 decode
+func Decode(src string) (string, error) {
+	b, err := base64.StdEncoding.DecodeString(src)
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
+}
+
+// encrypt src data with aes algorithm
+func AesEncrypt(src []byte, keyStr string) ([]byte, error) {
+	key := []byte(keyStr)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	padnum := block.BlockSize() - len(src)%block.BlockSize()
+	pad := bytes.Repeat([]byte{byte(padnum)}, padnum)
+	src = append(src, pad...)
+	blockmode := cipher.NewCBCEncrypter(block, key)
+	blockmode.CryptBlocks(src, src)
+	return src, nil
+}
+
+// decrypt src data with aes algorithm
+func AesDecrypt(src []byte, keyStr string) []byte {
+	key := []byte(keyStr)
+	block, _ := aes.NewCipher(key)
+	blockmode := cipher.NewCBCDecrypter(block, key)
+	blockmode.CryptBlocks(src, src)
+	n := len(src)
+	unpadnum := int(src[n-1])
+	return src[:n-unpadnum]
+}
+
+// generate asymmetric key pair
+func GenKeyPair() (privateKey string, publicKey string, e error) {
+	priKey, err := ecdsa.GenerateKey(elliptic.P256(), rd.Reader)
+	if err != nil {
+		return "", "", err
+	}
+	ecPrivateKey, err := x509.MarshalECPrivateKey(priKey)
+	if err != nil {
+		return "", "", err
+	}
+	privateKey = base64.StdEncoding.EncodeToString(ecPrivateKey)
+
+	X := priKey.X
+	Y := priKey.Y
+	xStr, err := X.MarshalText()
+	if err != nil {
+		return "", "", err
+	}
+	yStr, err := Y.MarshalText()
+	if err != nil {
+		return "", "", err
+	}
+	public := string(xStr) + "+" + string(yStr)
+	publicKey = base64.StdEncoding.EncodeToString([]byte(public))
+	return
+}
+
+// build asymmetric private key from private key string
+func BuildPrivateKey(privateKeyStr string) (priKey *ecdsa.PrivateKey, e error) {
+	bytes, err := base64.StdEncoding.DecodeString(privateKeyStr)
+	if err != nil {
+		return nil, err
+	}
+	priKey, err = x509.ParseECPrivateKey(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+// build asymmetric public key from public key string
+func BuildPublicKey(publicKeyStr string) (pubKey *ecdsa.PublicKey, e error) {
+	bytes, err := base64.StdEncoding.DecodeString(publicKeyStr)
+	if err != nil {
+		return nil, err
+	}
+	split := strings.Split(string(bytes), "+")
+	xStr := split[0]
+	yStr := split[1]
+	x := new(big.Int)
+	y := new(big.Int)
+	err = x.UnmarshalText([]byte(xStr))
+	if err != nil {
+		return nil, err
+	}
+	err = y.UnmarshalText([]byte(yStr))
+	if err != nil {
+		return nil, err
+	}
+	pub := ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}
+	pubKey = &pub
+	return
+}
+
+// sign content by private key string
+func Sign(content []byte, privateKeyStr string) (signature string, e error) {
+	priKey, err := BuildPrivateKey(privateKeyStr)
+	if err != nil {
+		return "", err
+	}
+	r, s, err := ecdsa.Sign(rd.Reader, priKey, []byte(Hash(content)))
+	if err != nil {
+		return "", err
+	}
+	rt, _ := r.MarshalText()
+	st, _ := s.MarshalText()
+	signStr := string(rt) + "+" + string(st)
+	signature = hex.EncodeToString([]byte(signStr))
+	return
+}
+
+// verify sign by public key string
+func VerifySign(content []byte, signature string, publicKeyStr string) bool {
+	decodeSign, err := hex.DecodeString(signature)
+	if err != nil {
+		return false
+	}
+	split := strings.Split(string(decodeSign), "+")
+	rStr := split[0]
+	sStr := split[1]
+	rr := new(big.Int)
+	ss := new(big.Int)
+	_ = rr.UnmarshalText([]byte(rStr))
+	_ = ss.UnmarshalText([]byte(sStr))
+	pubKey, err := BuildPublicKey(publicKeyStr)
+	if err != nil {
+		return false
+	}
+	return ecdsa.Verify(pubKey, []byte(Hash(content)), rr, ss)
+}
+
+// generate sha256 code for data
+func Hash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return base64.StdEncoding.EncodeToString(sum[:])
+}
+
+// generate md5 code for data
+func MD5(data []byte) string {
+	sum := md5.Sum(data)
+	return fmt.Sprintf("%x", sum)
+}
+
+// execute command with realtime output
+func Exec(command string, args ...string) <-chan string {
+	out := make(chan string, 1000)
+
+	if len(args) == 0 && stringIndex(command, " ") >= 0 {
+		args = []string{"-c", command}
+		command = "bash"
+	}
+
+	go func(c string, a ...string) {
+		defer close(out)
+
+		cmd := exec.Command(c, a...)
+
+		stdout, _ := cmd.StdoutPipe()
+		cmd.Stderr = cmd.Stdout
+		_ = cmd.Start()
+
+		scanner := bufio.NewScanner(stdout)
+		// scanner.Split(bufio.ScanWords)
+		for scanner.Scan() {
+			m := scanner.Text()
+			out <- m
+			// fmt.Println(m)
+		}
+		_ = cmd.Wait()
+	}(command, args...)
+
+	return out
+}
+
+// send http get request
+func HttpGet(urlstr string, args ...string) (int, []byte) {
+	if stringIndex(urlstr, "http") != 0 {
+		urlstr = "http://" + urlstr
+	}
+
+	// urlstr = url.QueryEscape(urlstr)
 	client := http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
@@ -3010,25 +3563,95 @@ func Request(url string, creds ...string) (int, []byte) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest("GET", urlstr, nil)
 
-	req.Header.Del("Cookie")
-	req.Header.Del("Authorization")
-	if len(creds) > 1 {
-		req.SetBasicAuth(creds[0], creds[1])
-	} else if len(creds) == 1 {
-		req.Header.Add("Authorization", "Bearer "+creds[0])
+	// req.Header.Del("Cookie")
+	// req.Header.Del("Authorization")
+	if len(args) > 0 {
+		hds := stringSplit(args[0], '|')
+		for _, item := range hds {
+			kv := stringSplit(item, ':')
+			if len(kv) > 1 {
+				switch toLower(kv[0]) {
+				case "cookie":
+					req.Header.Set("Cookie", kv[1])
+				case "auth", "basic", "token":
+					if v := stringSplit(kv[1], '/'); len(v) > 0 {
+						req.SetBasicAuth(v[0], v[1])
+					} else {
+						req.Header.Add("Authorization", "Bearer "+v[0])
+					}
+				case "agent":
+					req.Header.Add("User-Agent", kv[1])
+				}
+			}
+		}
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("request %s failed: %s", url, err.Error()))
+		return 600, []byte(fmt.Sprintf("request %s failed: %s", urlstr, err.Error()))
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("read response %s failed: %s", url, err.Error()))
+		return 600, []byte(fmt.Sprintf("read response %s failed: %s", urlstr, err.Error()))
+	}
+
+	return resp.StatusCode, bodyBytes
+}
+
+// send http post request
+func HttpPost(urlstr string, jsonData []byte, args ...string) (int, []byte) {
+	if stringIndex(urlstr, "http") != 0 {
+		urlstr = "http://" + urlstr
+	}
+
+	// urlstr = url.QueryEscape(urlstr)
+	client := http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	req, _ := http.NewRequest("POST", urlstr, bytes.NewBuffer(jsonData))
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// req.Header.Del("Cookie")
+	// req.Header.Del("Authorization")
+	if len(args) > 0 {
+		hds := stringSplit(args[0], '|')
+		for _, item := range hds {
+			kv := stringSplit(item, ':')
+			if len(kv) > 1 {
+				switch toLower(kv[0]) {
+				case "cookie":
+					req.Header.Set("Cookie", kv[1])
+				case "auth", "basic", "token":
+					if v := stringSplit(kv[1], '/'); len(v) > 0 {
+						req.SetBasicAuth(v[0], v[1])
+					} else {
+						req.Header.Add("Authorization", "Bearer "+v[0])
+					}
+				case "agent":
+					req.Header.Add("User-Agent", kv[1])
+				}
+			}
+		}
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 600, []byte(fmt.Sprintf("request %s failed: %s", urlstr, err.Error()))
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 600, []byte(fmt.Sprintf("read response %s failed: %s", urlstr, err.Error()))
 	}
 
 	return resp.StatusCode, bodyBytes

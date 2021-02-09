@@ -2,7 +2,7 @@
 
 ## 主要特性
 
-gol是基于Golang标准库log实现的增强日志库, 在支持log库的所有功能, 保持简洁轻量的同时, 尽可能多的提供常用的日志特性, gol的新特性主要包括:
+gol是基于Golang标准库log源码实现的增强日志库, 在支持log库的所有功能, 保持简洁轻量的同时, 尽可能多的提供常用的日志特性, gol的新特性主要包括:
 
 - 日志高亮(两种高亮方式)
 - 日志调用定位(包名.函数名+文件名:行号)
@@ -403,10 +403,11 @@ LogSaver已在日志持久化部分介绍.
 gol日志库内置了一些常用的工具函数, 除**Prt**, **Prtf**, **Prtln**, **Sprtf**, **Errf**等常用输出函数外, 还提供了以下函数:
 
 - **Cprt**, **Cprtf**, **Cprtln**: 彩色输出
-- **Jsonify**: 将任意数据结构转换为json字符串(内置的**F**类型等价于map[string]interface{}, 同样支持转换)
+- **Jsonify**: 将任意数据结构转换为json字符串(内置的**M**类型为map[string]interface{}别名, 同样支持转换)
 - **Jsquery**: 根据字符串路径提取json字符串中的特定key的value, 无需构建结构体, 字符串路径支持高级格式, 如"user*#0[0].[1-3]"表示json字符串中第一个带user前缀的key的value的第一个元素的第二和第三个子元素.
-- **Imapify**: 将json字符串转换为map[string]interface{}(内置的**F**类型等价于map[string]interface{})
+- **Imapify**: 将json字符串转换为map[string]interface{}(内置的**M**类型为map[string]interface{}别名)
 - **Imapset**: 修改map[string]interface{}指定key的value, 字符串路径支持下标, 如user[0]表示修改key为user的第一个子元素.
+- **etc...**: 其他诸如Iter, Remove, QuickSort, Uniq, Request等常用工具函数.
 
 使用举例:
 
@@ -429,7 +430,7 @@ func main() {
   }`
   gol.Prtln(gol.Jsquery(jsdata, "loc*.[0].prov\\.city"))
   gol.Prtln(gol.Jsquery(jsdata, "hobbies[odd].[0]"))
-  user := gol.F{
+  user := gol.M{
     "name":     "tom",
     "age":      25,
     "children": []Person{Person{"Lucy", 5}, Person{"Lily", 4}},
@@ -472,6 +473,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 #### 每次操作执行时间(ns/op)
 
+
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 2688   | 2895   | 741           | 2321         | -              | -          | -                |
@@ -483,6 +485,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 #### 每次操作分配内存(B/op)
 
+
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 16     | 36     | 16            | 16           | -              | -          | -                |
@@ -493,6 +496,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 | zerolog  | 0      | 35     | 0             | 0            | 0              | 0          | 34               |
 
 #### 每次操作内存分配次数(allocs/op)
+
 
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
 | -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |

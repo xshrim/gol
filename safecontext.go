@@ -16,11 +16,9 @@ type SafeContext struct {
 }
 
 // create thread-safe context with the fields and loggers
-func NewSafeContext(fd F, loggers ...*Logger) *SafeContext {
+func NewSafeContext(fd M, loggers ...*Logger) *SafeContext {
 	ctx := &SafeContext{loggers: nil, buf: map2json(nil, fd)}
-	for _, l := range loggers {
-		ctx.loggers = append(ctx.loggers, l)
-	}
+	ctx.loggers = append(ctx.loggers, loggers...)
 	return ctx
 }
 
@@ -54,7 +52,7 @@ func (c *SafeContext) GetField() []byte {
 }
 
 // set fields
-func (c *SafeContext) Field(fd F) *SafeContext {
+func (c *SafeContext) Field(fd M) *SafeContext {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if fd == nil {
@@ -70,7 +68,7 @@ func (c *SafeContext) Field(fd F) *SafeContext {
 func (c *SafeContext) Error(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(ERROR) {
-			l.Output(ERROR, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(ERROR, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -80,7 +78,7 @@ func (c *SafeContext) Error(v ...interface{}) Printer {
 func (c *SafeContext) Errorf(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(ERROR) {
-			l.Output(ERROR, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(ERROR, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -90,7 +88,7 @@ func (c *SafeContext) Errorf(format string, v ...interface{}) Printer {
 func (c *SafeContext) Warn(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(WARN) {
-			l.Output(WARN, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(WARN, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -100,7 +98,7 @@ func (c *SafeContext) Warn(v ...interface{}) Printer {
 func (c *SafeContext) Warnf(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(WARN) {
-			l.Output(WARN, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(WARN, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -110,7 +108,7 @@ func (c *SafeContext) Warnf(format string, v ...interface{}) Printer {
 func (c *SafeContext) Notic(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(NOTIC) {
-			l.Output(NOTIC, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(NOTIC, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -120,7 +118,7 @@ func (c *SafeContext) Notic(v ...interface{}) Printer {
 func (c *SafeContext) Noticf(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(NOTIC) {
-			l.Output(NOTIC, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(NOTIC, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -130,7 +128,7 @@ func (c *SafeContext) Noticf(format string, v ...interface{}) Printer {
 func (c *SafeContext) Info(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(INFO) {
-			l.Output(INFO, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(INFO, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -140,7 +138,7 @@ func (c *SafeContext) Info(v ...interface{}) Printer {
 func (c *SafeContext) Infof(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(INFO) {
-			l.Output(INFO, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(INFO, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -150,7 +148,7 @@ func (c *SafeContext) Infof(format string, v ...interface{}) Printer {
 func (c *SafeContext) Debug(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(DEBUG) {
-			l.Output(DEBUG, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(DEBUG, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -160,7 +158,7 @@ func (c *SafeContext) Debug(v ...interface{}) Printer {
 func (c *SafeContext) Debugf(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(DEBUG) {
-			l.Output(DEBUG, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(DEBUG, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -170,7 +168,7 @@ func (c *SafeContext) Debugf(format string, v ...interface{}) Printer {
 func (c *SafeContext) Trace(v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(TRACE) {
-			l.Output(TRACE, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(TRACE, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	return c
@@ -180,7 +178,7 @@ func (c *SafeContext) Trace(v ...interface{}) Printer {
 func (c *SafeContext) Tracef(format string, v ...interface{}) Printer {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(TRACE) {
-			l.Output(TRACE, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(TRACE, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	return c
@@ -190,7 +188,7 @@ func (c *SafeContext) Tracef(format string, v ...interface{}) Printer {
 func (c *SafeContext) Fatal(v ...interface{}) {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(FATAL) {
-			l.Output(FATAL, 2, c.buf, fmt.Sprint(v...), true)
+			_ = l.Output(FATAL, 2, c.buf, fmt.Sprint(v...), true)
 		}
 	}
 	os.Exit(1)
@@ -200,7 +198,7 @@ func (c *SafeContext) Fatal(v ...interface{}) {
 func (c *SafeContext) Fatalf(format string, v ...interface{}) {
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(FATAL) {
-			l.Output(FATAL, 2, c.buf, fmt.Sprintf(format, v...), true)
+			_ = l.Output(FATAL, 2, c.buf, fmt.Sprintf(format, v...), true)
 		}
 	}
 	os.Exit(1)
@@ -211,7 +209,7 @@ func (c *SafeContext) Panic(v ...interface{}) {
 	s := fmt.Sprint(v...)
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(PANIC) {
-			l.Output(PANIC, 2, c.buf, s, true)
+			_ = l.Output(PANIC, 2, c.buf, s, true)
 		}
 	}
 	panic(s)
@@ -222,7 +220,7 @@ func (c *SafeContext) Panicf(format string, v ...interface{}) {
 	s := fmt.Sprintf(format, v...)
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(PANIC) {
-			l.Output(PANIC, 2, c.buf, s, true)
+			_ = l.Output(PANIC, 2, c.buf, s, true)
 		}
 	}
 	panic(s)
@@ -234,7 +232,7 @@ func (c *SafeContext) Log(level interface{}, v ...interface{}) Printer {
 	lv := parseLevel(level)
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(lv) {
-			l.Output(lv, 2, c.buf, s, false)
+			_ = l.Output(lv, 2, c.buf, s, false)
 		}
 	}
 	switch lv {
@@ -252,7 +250,7 @@ func (c *SafeContext) Logf(level interface{}, format string, v ...interface{}) P
 	lv := parseLevel(level)
 	for _, l := range c.loggers {
 		if l != nil && l.lvcheck(lv) {
-			l.Output(lv, 2, c.buf, s, false)
+			_ = l.Output(lv, 2, c.buf, s, false)
 		}
 	}
 	switch lv {

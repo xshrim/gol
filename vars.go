@@ -34,7 +34,7 @@ const (
 	DELETE
 )
 
-const hex = "0123456789abcdef"
+const hexs = "0123456789abcdef"
 
 var noEscapeTable = [256]bool{}
 

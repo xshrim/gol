@@ -41,9 +41,9 @@ func (l *Logger) HttpHandlerFunc(fn http.HandlerFunc, headers ...string) http.Ha
 		fn(wl, r)
 
 		if l.HasFlag(Ljson) {
-			data := F{
+			data := M{
 				"status-code":    wl.statusCode,
-				"latency-time":   time.Now().Sub(startTime),
+				"latency-time":   time.Since(startTime),
 				"client-ip":      r.RemoteAddr,
 				"request-method": r.Method,
 				"request-uri":    r.RequestURI,
@@ -59,7 +59,7 @@ func (l *Logger) HttpHandlerFunc(fn http.HandlerFunc, headers ...string) http.Ha
 			format := "| %s | %10v | %15s | %s | %s |"
 			values := []interface{}{
 				colorStatusCode(wl.statusCode),
-				time.Now().Sub(startTime),
+				time.Since(startTime),
 				r.RemoteAddr,
 				colorRequestMethod(r.Method),
 				r.RequestURI,
@@ -76,7 +76,7 @@ func (l *Logger) HttpHandlerFunc(fn http.HandlerFunc, headers ...string) http.Ha
 			format := "| %3d | %10v | %15s | %5s | %s |"
 			values := []interface{}{
 				wl.statusCode,
-				time.Now().Sub(startTime),
+				time.Since(startTime),
 				r.RemoteAddr,
 				r.Method,
 				r.RequestURI,
@@ -101,9 +101,9 @@ func (l *Logger) HttpHandler(handler http.Handler, headers ...string) http.Handl
 		handler.ServeHTTP(wl, r)
 
 		if l.HasFlag(Ljson) {
-			data := F{
+			data := M{
 				"status-code":    wl.statusCode,
-				"latency-time":   time.Now().Sub(startTime),
+				"latency-time":   time.Since(startTime),
 				"client-ip":      r.RemoteAddr,
 				"request-method": r.Method,
 				"request-uri":    r.RequestURI,
@@ -119,7 +119,7 @@ func (l *Logger) HttpHandler(handler http.Handler, headers ...string) http.Handl
 			format := "| %s | %10v | %15s | %s | %s |"
 			values := []interface{}{
 				colorStatusCode(wl.statusCode),
-				time.Now().Sub(startTime),
+				time.Since(startTime),
 				r.RemoteAddr,
 				colorRequestMethod(r.Method),
 				r.RequestURI,
@@ -136,7 +136,7 @@ func (l *Logger) HttpHandler(handler http.Handler, headers ...string) http.Handl
 			format := "| %3d | %10v | %15s | %5s | %s |"
 			values := []interface{}{
 				wl.statusCode,
-				time.Now().Sub(startTime),
+				time.Since(startTime),
 				r.RemoteAddr,
 				r.Method,
 				r.RequestURI,
