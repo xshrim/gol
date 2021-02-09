@@ -26,6 +26,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1534,9 +1535,53 @@ func checkSum(data []byte) uint16 {
 }
 
 func compareInterface(a, b interface{}) int {
-	ma, _ := json.Marshal(a)
-	mb, _ := json.Marshal(b)
-	return bytes.Compare(ma, mb)
+	aVal := reflect.ValueOf(a)
+	bVal := reflect.ValueOf(b)
+
+	switch aVal.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch {
+		case aVal.Int() < bVal.Int():
+			return -1
+		case aVal.Int() == bVal.Int():
+			return 0
+		case aVal.Int() > bVal.Int():
+			return 1
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch {
+		case aVal.Uint() < bVal.Uint():
+			return -1
+		case aVal.Uint() == bVal.Uint():
+			return 0
+		case aVal.Uint() > bVal.Uint():
+			return 1
+		}
+	case reflect.Float32, reflect.Float64:
+		switch {
+		case aVal.Float() < bVal.Float():
+			return -1
+		case aVal.Float() == bVal.Float():
+			return 0
+		case aVal.Float() > bVal.Float():
+			return 1
+		}
+	case reflect.String:
+		switch {
+		case aVal.String() < bVal.String():
+			return -1
+		case aVal.String() == bVal.String():
+			return 0
+		case aVal.String() > bVal.String():
+			return 1
+		}
+	default:
+		ma, _ := json.Marshal(a)
+		mb, _ := json.Marshal(b)
+		return bytes.Compare(ma, mb)
+	}
+
+	return 0
 }
 
 func quickSortBool(list []bool, low, high int) {
@@ -2870,7 +2915,7 @@ func HumanSize(b uint64) string {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.2f%ciB", float64(b)/float64(div), "KMGTPEZY"[exp])
+	return fmt.Sprintf("%.2f%ciB", float64(b)/float64(div), "KM1PEZY"[exp])
 }
 
 // convert human readable string to byte size
@@ -2879,7 +2924,7 @@ func ByteSize(str string) (uint64, error) {
 		return r != '.' && !unicode.IsDigit(r)
 	})
 	var multiplier float64 = 1
-	var sizeSuffixes = "BKMGTPEZY"
+	var sizeSuffixes = "BKM1PEZY"
 	if i > 0 {
 		suffix := str[i:]
 		multiplier = 0
@@ -2905,6 +2950,47 @@ func ByteSize(str string) (uint64, error) {
 	}
 	val *= multiplier
 	return uint64(math.Ceil(val)), nil
+}
+
+// check if target is exist
+func IsExist(target string) bool {
+	if _, err := os.Stat(target); err == nil {
+		return true
+
+	} else if os.IsNotExist(err) {
+		return false
+
+	} else {
+		// Schrodinger: file may or may not exist. See err for details.
+
+		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
+		return false
+	}
+}
+
+// check if target is directory
+func IsDir(target string) bool {
+	info, err := os.Stat(target)
+	if os.IsNotExist(err) {
+		return false
+	}
+	if info.IsDir() {
+		return true
+	} else {
+		return false
+	}
+}
+
+// list all files and directories in root folder
+func ListAll(root string) []string {
+	var files []string
+
+	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+
+	return files
 }
 
 // read file line by line
@@ -3549,13 +3635,23 @@ func Exec(command string, args ...string) <-chan string {
 	return out
 }
 
-// send http get request
-func HttpGet(urlstr string, args ...string) (int, []byte) {
-	if stringIndex(urlstr, "http") != 0 {
-		urlstr = "http://" + urlstr
+func UrlParams(rawUrl string) (map[string][]string, error) {
+	stUrl, err := url.Parse(rawUrl)
+	if err != nil {
+		return nil, err
 	}
 
-	// urlstr = url.QueryEscape(urlstr)
+	m := stUrl.Query()
+	return m, nil
+}
+
+// send http get request
+func HttpGet(rawUrl string, args ...string) (int, []byte) {
+	if stringIndex(rawUrl, "http") != 0 {
+		rawUrl = "http://" + rawUrl
+	}
+
+	// rawUrl = url.QueryEscape(rawUrl)
 	client := http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
@@ -3563,7 +3659,7 @@ func HttpGet(urlstr string, args ...string) (int, []byte) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", urlstr, nil)
+	req, _ := http.NewRequest("GET", rawUrl, nil)
 
 	// req.Header.Del("Cookie")
 	// req.Header.Del("Authorization")
@@ -3590,25 +3686,25 @@ func HttpGet(urlstr string, args ...string) (int, []byte) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("request %s failed: %s", urlstr, err.Error()))
+		return 600, []byte(fmt.Sprintf("request %s failed: %s", rawUrl, err.Error()))
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("read response %s failed: %s", urlstr, err.Error()))
+		return 600, []byte(fmt.Sprintf("read response %s failed: %s", rawUrl, err.Error()))
 	}
 
 	return resp.StatusCode, bodyBytes
 }
 
 // send http post request
-func HttpPost(urlstr string, jsonData []byte, args ...string) (int, []byte) {
-	if stringIndex(urlstr, "http") != 0 {
-		urlstr = "http://" + urlstr
+func HttpPost(rawUrl string, jsonData []byte, args ...string) (int, []byte) {
+	if stringIndex(rawUrl, "http") != 0 {
+		rawUrl = "http://" + rawUrl
 	}
 
-	// urlstr = url.QueryEscape(urlstr)
+	// rawUrl = url.QueryEscape(rawUrl)
 	client := http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
@@ -3616,7 +3712,7 @@ func HttpPost(urlstr string, jsonData []byte, args ...string) (int, []byte) {
 		},
 	}
 
-	req, _ := http.NewRequest("POST", urlstr, bytes.NewBuffer(jsonData))
+	req, _ := http.NewRequest("POST", rawUrl, bytes.NewBuffer(jsonData))
 
 	req.Header.Set("Content-Type", "application/json")
 
@@ -3645,13 +3741,13 @@ func HttpPost(urlstr string, jsonData []byte, args ...string) (int, []byte) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("request %s failed: %s", urlstr, err.Error()))
+		return 600, []byte(fmt.Sprintf("request %s failed: %s", rawUrl, err.Error()))
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 600, []byte(fmt.Sprintf("read response %s failed: %s", urlstr, err.Error()))
+		return 600, []byte(fmt.Sprintf("read response %s failed: %s", rawUrl, err.Error()))
 	}
 
 	return resp.StatusCode, bodyBytes
