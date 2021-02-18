@@ -40,9 +40,6 @@ func (c *Context) Loggers(l ...*Logger) *Context {
 
 // get fields
 func (c *Context) GetField() []byte {
-	if c.buf != nil && len(c.buf) > 1 && c.buf[len(c.buf)-1] != '}' {
-		return append(c.buf, '}')
-	}
 	return c.buf
 }
 

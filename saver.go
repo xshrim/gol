@@ -6,7 +6,7 @@ import (
 )
 
 type LogSaver interface {
-	save([]string)
+	save([]byte)
 }
 
 // single file for log persistence
@@ -29,11 +29,11 @@ func NewLogSaverWithFile(path string) LogSaver {
 	return &LogFile{path: path}
 }
 
-func (lf *LogFile) save(data []string) {
+func (lf *LogFile) save(data []byte) {
 	logfile := lf.path
-	mode := os.O_RDWR | os.O_CREATE | os.O_APPEND
+	// mode := os.O_RDWR | os.O_CREATE | os.O_APPEND
 
-	writeFile(logfile, mode, data)
+	_ = writeFile(logfile, data, true)
 }
 
 // create log saver with rotatable files
@@ -83,14 +83,14 @@ func NewLogSaverWithRotation(dir string, size int64, count int) LogSaver {
 	return &Rotation{dir: dir, prefix: prefix, size: size, count: count, format: format}
 }
 
-func (rt *Rotation) save(data []string) {
-	logfile, mode := rt.rotate()
+func (rt *Rotation) save(data []byte) {
+	logfile, append := rt.rotate()
 
-	writeFile(logfile, mode, data)
+	_ = writeFile(logfile, data, append)
 }
 
-func (rt *Rotation) rotate() (string, int) {
-	defaultMode := os.O_RDWR | os.O_CREATE | os.O_APPEND
+func (rt *Rotation) rotate() (string, bool) {
+	// defaultMode := os.O_RDWR | os.O_CREATE | os.O_APPEND
 
 	logfile := fmt.Sprintf("%s%s.%s.log", rt.dir, rt.prefix, fmt.Sprintf(rt.format, rt.cur))
 	s, err := os.Stat(logfile)
@@ -98,11 +98,11 @@ func (rt *Rotation) rotate() (string, int) {
 		if rt.size > 0 && s.Size() >= rt.size {
 			rt.cur = (rt.cur + 1) % rt.count
 			logfile = fmt.Sprintf("%s%s.%s.log", rt.dir, rt.prefix, fmt.Sprintf(rt.format, rt.cur))
-			return logfile, os.O_RDWR | os.O_CREATE | os.O_TRUNC
+			return logfile, false
 		}
 	} else if s != nil && s.IsDir() {
-		return "", defaultMode
+		return "", true
 	}
 
-	return logfile, defaultMode
+	return logfile, true
 }

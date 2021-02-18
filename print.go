@@ -1,7 +1,6 @@
 package gol
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,26 +10,26 @@ import (
 )
 
 // check and deal with multiple output arguments
-func formatData(v ...interface{}) string {
-	if v == nil || len(v) < 1 {
-		return ""
-	}
-	val := ""
+// func formatData(v ...interface{}) string {
+// 	if v == nil || len(v) < 1 {
+// 		return ""
+// 	}
+// 	val := ""
 
-	if len(v) > 1 {
-		if format, ok := v[0].(string); ok && isFormatString(format) {
-			str := fmt.Sprintf(format, v[1:]...)
-			if !bytes.Contains([]byte(str), []byte("%!(")) {
-				val = str
-			}
-		}
-	}
+// 	if len(v) > 1 {
+// 		if format, ok := v[0].(string); ok && isFormatString(format) {
+// 			str := fmt.Sprintf(format, v[1:]...)
+// 			if !bytes.Contains([]byte(str), []byte("%!(")) {
+// 				val = str
+// 			}
+// 		}
+// 	}
 
-	if val == "" {
-		val = fmt.Sprint(v...)
-	}
-	return val
-}
+// 	if val == "" {
+// 		val = fmt.Sprint(v...)
+// 	}
+// 	return val
+// }
 
 // output colorful message to stdout using default logger
 func Cprt(color string, v ...interface{}) {

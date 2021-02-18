@@ -1,4 +1,4 @@
-package gol
+package tk
 
 import (
 	"bytes"

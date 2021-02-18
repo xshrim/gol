@@ -24,7 +24,7 @@ const (
 	Ljson                    // output json, this flag will override Lcolor and Lfullcolor flag
 	Lcolor                   // if output colorful log level or not
 	Lfcolor                  // if output colorful log or not
-	LUTC                     // if Ldate or Ltime is set, use UTC rather than the local time zone
+	Lutc                     // if Ldate or Ltime is set, use UTC rather than the local time zone
 	Ldefault = Ldate | Ltime // initial values for the standard logger
 )
 
@@ -34,15 +34,7 @@ const (
 	DELETE
 )
 
-const hexs = "0123456789abcdef"
-
-var noEscapeTable = [256]bool{}
-
 // default logger
 var std = New()
 
-func init() {
-	for i := 0; i <= 0x7e; i++ {
-		noEscapeTable[i] = i >= 0x20 && i != '\\' && i != '"'
-	}
-}
+const hexs = "0123456789abcdef"

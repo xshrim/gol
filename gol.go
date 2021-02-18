@@ -893,7 +893,7 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 	}
 
 	if l.flag&(Ldate|Ltime|Lmsec) != 0 {
-		if l.flag&LUTC != 0 {
+		if l.flag&Lutc != 0 {
 			t = t.UTC()
 		}
 		if l.flag&Ldate != 0 {
@@ -1281,7 +1281,7 @@ func (l *Logger) saveLog() {
 	for {
 		select {
 		case data := <-l.bufchan:
-			l.saver.save([]string{data})
+			l.saver.save([]byte(data))
 		case <-l.done:
 			close(l.bufchan)
 			break

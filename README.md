@@ -59,7 +59,7 @@ gol支持的日志Flag有:
 - Ljson: 以json格式打印日志
 - Lcolor: 日志级别字段高亮
 - Lfcolor: 日志所有字段高亮
-- LUTC: 日期和时间使用UTC时间
+- Lutc: 日期和时间使用UTC时间
 - Ldefault: 默认打印设置(日期和时间)
 
 此外用户也可以自行创建日志实例, 或基于该实例作进一步封装, 自定义日志实例与全局默认日志实例使用方法相同:
@@ -400,20 +400,20 @@ LogSaver已在日志持久化部分介绍.
 
 ### 工具集
 
-gol日志库内置了一些常用的工具函数, 除**Prt**, **Prtf**, **Prtln**, **Sprtf**, **Errf**等常用输出函数外, 还提供了以下函数:
+gol日志库内置了**Prt**, **Prtf**, **Prtln**, **Sprtf**, **Errf**等常用输出函数(包括提供彩色输出的**Cprt**, **Cprtf**, **Cprtln**等函数). 此外其中的**tk**库还提供了大量的常用工具函数:
 
-- **Cprt**, **Cprtf**, **Cprtln**: 彩色输出
 - **Jsonify**: 将任意数据结构转换为json字符串(内置的**M**类型为map[string]interface{}别名, 同样支持转换)
 - **Jsquery**: 根据字符串路径提取json字符串中的特定key的value, 无需构建结构体, 字符串路径支持高级格式, 如"user*#0[0].[1-3]"表示json字符串中第一个带user前缀的key的value的第一个元素的第二和第三个子元素.
 - **Imapify**: 将json字符串转换为map[string]interface{}(内置的**M**类型为map[string]interface{}别名)
 - **Imapset**: 修改map[string]interface{}指定key的value, 字符串路径支持下标, 如user[0]表示修改key为user的第一个子元素.
-- **etc...**: 其他诸如Iter, Remove, QuickSort, Uniq, Request等常用工具函数.
+- **etc...**: 其他诸如Iter, Remove, QuickSort, Uniq, Exec, HttpGet等常用工具函数.
 
 使用举例:
 
 ```go
 package main
 import "github.com/xshrim/gol"
+import "github.com/xshrim/gol/tk"
 type Person struct {
   Name string
   Age  int
@@ -428,21 +428,21 @@ func main() {
       "street": "bar"
     }]
   }`
-  gol.Prtln(gol.Jsquery(jsdata, "loc*.[0].prov\\.city"))
-  gol.Prtln(gol.Jsquery(jsdata, "hobbies[odd].[0]"))
+  gol.Prtln(tk.Jsquery(jsdata, "loc*.[0].prov\\.city"))
+  gol.Prtln(tk.Jsquery(jsdata, "hobbies[odd].[0]"))
   user := gol.M{
     "name":     "tom",
     "age":      25,
     "children": []Person{Person{"Lucy", 5}, Person{"Lily", 4}},
     "hobbies":    []string{"football", "movie", "read", "music"},
-    "location": []gol.F{gol.F{
+    "location": []gol.M{gol.M{
       "city":   "foo",
       "street": "bar",
     }},
   }
-  gol.Prtln(gol.Jsonify(user))
-  gol.Prtln(gol.Jsonify([]map[string]interface{}{map[string]interface{}{"a": 1, "b": "demo"}, map[string]interface{}{"c": 2, "d": []string{"foo", "bar"}}}))
-  gol.Imapset(user, "hobbies[0]", []string{"game"})
+  gol.Prtln(tk.Jsonify(user))
+  gol.Prtln(tk.Jsonify([]map[string]interface{}{map[string]interface{}{"a": 1, "b": "demo"}, map[string]interface{}{"c": 2, "d": []string{"foo", "bar"}}}))
+  tk.Imapset(user, "hobbies[0]", []string{"game"})
   gol.AddFlag(gol.Ljson).With(user).Info(user)
 }
 ```

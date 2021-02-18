@@ -43,11 +43,6 @@ func (c *SafeContext) Loggers(l ...*Logger) *SafeContext {
 
 // get fields
 func (c *SafeContext) GetField() []byte {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.buf != nil && len(c.buf) > 1 && c.buf[len(c.buf)-1] != '}' {
-		return append(c.buf, '}')
-	}
 	return c.buf
 }
 

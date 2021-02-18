@@ -53,7 +53,7 @@ func (l *Logger) HttpHandlerFunc(fn http.HandlerFunc, headers ...string) http.Ha
 				data[toLower(hd)] = r.Header.Get(hd)
 			}
 
-			l.Info(Jsonify(data))
+			l.Info(string(map2json(nil, data)))
 
 		} else if l.HasFlag(Lcolor) && !l.HasFlag(Lfcolor) {
 			format := "| %s | %10v | %15s | %s | %s |"
@@ -113,7 +113,7 @@ func (l *Logger) HttpHandler(handler http.Handler, headers ...string) http.Handl
 				data[toLower(hd)] = r.Header.Get(hd)
 			}
 
-			l.Info(Jsonify(data))
+			l.Info(string(map2json(nil, data)))
 
 		} else if l.HasFlag(Lcolor) && !l.HasFlag(Lfcolor) {
 			format := "| %s | %10v | %15s | %s | %s |"
