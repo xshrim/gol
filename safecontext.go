@@ -16,7 +16,7 @@ type SafeContext struct {
 }
 
 // create thread-safe context with the fields and loggers
-func NewSafeContext(fd M, loggers ...*Logger) *SafeContext {
+func NewSafeContext(fd map[string]interface{}, loggers ...*Logger) *SafeContext {
 	ctx := &SafeContext{loggers: nil, buf: map2json(nil, fd)}
 	ctx.loggers = append(ctx.loggers, loggers...)
 	return ctx
@@ -47,7 +47,7 @@ func (c *SafeContext) GetField() []byte {
 }
 
 // set fields
-func (c *SafeContext) Field(fd M) *SafeContext {
+func (c *SafeContext) Field(fd map[string]interface{}) *SafeContext {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if fd == nil {

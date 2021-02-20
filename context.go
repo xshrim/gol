@@ -13,7 +13,7 @@ type Context struct {
 }
 
 // create context with the fields and loggers
-func NewContext(fd M, loggers ...*Logger) *Context {
+func NewContext(fd map[string]interface{}, loggers ...*Logger) *Context {
 	ctx := &Context{loggers: nil, buf: map2json(nil, fd)}
 	ctx.loggers = append(ctx.loggers, loggers...)
 	return ctx
@@ -44,7 +44,7 @@ func (c *Context) GetField() []byte {
 }
 
 // set fields
-func (c *Context) Field(fd M) *Context {
+func (c *Context) Field(fd map[string]interface{}) *Context {
 	if fd == nil {
 		c.buf = nil
 		return c

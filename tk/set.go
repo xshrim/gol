@@ -8,20 +8,20 @@ import (
 	"strings"
 )
 
-type Set map[interface{}]struct{}
+type set map[interface{}]struct{}
 
-// An OrderedPair represents a 2-tuple of values.
-type OrderedPair struct {
+// An orderedPair represents a 2-tuple of values.
+type orderedPair struct {
 	First  interface{}
 	Second interface{}
 }
 
-type Iterator struct {
+type iterator struct {
 	C    <-chan interface{}
 	stop chan struct{}
 }
 
-func (i *Iterator) Stop() {
+func (i *iterator) Stop() {
 	defer func() {
 		_ = recover()
 	}()
@@ -32,17 +32,17 @@ func (i *Iterator) Stop() {
 	}
 }
 
-func newIterator() (*Iterator, chan<- interface{}, <-chan struct{}) {
+func newIterator() (*iterator, chan<- interface{}, <-chan struct{}) {
 	itemChan := make(chan interface{})
 	stopChan := make(chan struct{})
-	return &Iterator{
+	return &iterator{
 		C:    itemChan,
 		stop: stopChan,
 	}, itemChan, stopChan
 }
 
-func NewSet(elts ...interface{}) Set {
-	s := make(Set)
+func NewSet(elts ...interface{}) set {
+	s := make(set)
 	if len(elts) == 1 {
 		tp := reflect.TypeOf(elts[0]).Kind()
 		if tp == reflect.Slice || tp == reflect.Array {
@@ -59,7 +59,7 @@ func NewSet(elts ...interface{}) Set {
 	return s
 }
 
-func (pair *OrderedPair) Equal(other OrderedPair) bool {
+func (pair *orderedPair) Equal(other orderedPair) bool {
 	if pair.First == other.First &&
 		pair.Second == other.Second {
 		return true
@@ -68,72 +68,72 @@ func (pair *OrderedPair) Equal(other OrderedPair) bool {
 	return false
 }
 
-func (set Set) Add(i interface{}) bool {
-	_, found := set[i]
+func (s set) Add(i interface{}) bool {
+	_, found := s[i]
 	if found {
 		return false
 	}
 
-	set[i] = struct{}{}
+	s[i] = struct{}{}
 	return true
 }
 
-func (set Set) Contains(i ...interface{}) bool {
+func (s set) Contain(i ...interface{}) bool {
 	for _, val := range i {
-		if _, ok := set[val]; !ok {
+		if _, ok := s[val]; !ok {
 			return false
 		}
 	}
 	return true
 }
 
-func (set Set) IsSubset(other Set) bool {
-	if set.Len() > other.Len() {
+func (s set) IsSubs(other set) bool {
+	if s.Len() > other.Len() {
 		return false
 	}
-	for elem := range set {
-		if !other.Contains(elem) {
+	for elem := range s {
+		if !other.Contain(elem) {
 			return false
 		}
 	}
 	return true
 }
 
-func (set Set) IsProperSubset(other Set) bool {
-	return set.IsSubset(other) && !set.Equal(other)
+func (s set) IsProperSubs(other set) bool {
+	return s.IsSubs(other) && !s.Equal(other)
 }
 
-func (set Set) IsSuperset(other Set) bool {
-	return other.IsSubset(set)
+func (s set) IsSupers(other set) bool {
+	return other.IsSubs(s)
 }
 
-func (set Set) IsProperSuperset(other Set) bool {
-	return set.IsSuperset(other) && !set.Equal(other)
+func (s set) IsProperSupers(other set) bool {
+	return s.IsSupers(other) && !s.Equal(other)
 }
 
-func (set Set) Union(other Set) Set {
-	unionedSet := NewSet()
+func (s set) Union(other set) set {
+	unionedset := NewSet()
 
-	for elem := range set {
-		unionedSet.Add(elem)
+	for elem := range s {
+		unionedset.Add(elem)
 	}
 	for elem := range other {
-		unionedSet.Add(elem)
+		unionedset.Add(elem)
 	}
-	return unionedSet
+	return unionedset
 }
 
-func (set Set) Intersect(other Set) Set {
+func (s set) Intersect(other set) set {
 	intersection := NewSet()
-	if set.Len() < other.Len() {
-		for elem := range set {
-			if other.Contains(elem) {
+	if s.Len() < other.Len() {
+		for elem := range s {
+			if other.Contain(elem) {
 				intersection.Add(elem)
 			}
 		}
 	} else {
 		for elem := range other {
-			if set.Contains(elem) {
+			if s.Contain(elem) {
 				intersection.Add(elem)
 			}
 		}
@@ -141,57 +141,57 @@ func (set Set) Intersect(other Set) Set {
 	return intersection
 }
 
-func (set Set) Diff(other Set) Set {
+func (s set) Diff(other set) set {
 	difference := NewSet()
-	for elem := range set {
-		if !other.Contains(elem) {
+	for elem := range s {
+		if !other.Contain(elem) {
 			difference.Add(elem)
 		}
 	}
 	return difference
 }
 
-func (set Set) SymmetricDiff(other Set) Set {
-	aDiff := set.Diff(other)
-	bDiff := other.Diff(set)
+func (s set) SymmetricDiff(other set) set {
+	aDiff := s.Diff(other)
+	bDiff := other.Diff(s)
 	return aDiff.Union(bDiff)
 }
 
-func (set Set) Clear() {
-	for elem := range set {
-		delete(set, elem)
+func (s set) Clear() {
+	for elem := range s {
+		delete(s, elem)
 	}
 }
 
-func (set Set) Remove(i interface{}) {
-	delete(set, i)
+func (s set) Remove(i interface{}) {
+	delete(s, i)
 }
 
-func (set Set) Sort() {
-	s := set.ToSlice()
-	quickSortInterface(s, 0, len(s)-1)
-	set.Clear()
-	for _, elem := range s {
-		set.Add(elem)
+func (s set) Sort() {
+	sl := s.ToSlice()
+	quickSortInterface(sl, 0, len(sl)-1)
+	s.Clear()
+	for _, elem := range sl {
+		s.Add(elem)
 	}
 }
 
-func (set Set) Len() int {
-	return len(set)
+func (s set) Len() int {
+	return len(s)
 }
 
-func (set Set) Each(fn func(interface{}) bool) {
-	for elem := range set {
+func (s set) Each(fn func(interface{}) bool) {
+	for elem := range s {
 		if fn(elem) {
 			break
 		}
 	}
 }
 
-func (set Set) Iter() <-chan interface{} {
+func (s set) Iter() <-chan interface{} {
 	ch := make(chan interface{})
 	go func() {
-		for elem := range set {
+		for elem := range s {
 			ch <- elem
 		}
 		close(ch)
@@ -200,12 +200,12 @@ func (set Set) Iter() <-chan interface{} {
 	return ch
 }
 
-func (set Set) Iterator() *Iterator {
+func (s set) iterator() *iterator {
 	iterator, ch, stopCh := newIterator()
 
 	go func() {
 	L:
-		for elem := range set {
+		for elem := range s {
 			select {
 			case <-stopCh:
 				break L
@@ -218,59 +218,59 @@ func (set Set) Iterator() *Iterator {
 	return iterator
 }
 
-func (set Set) Equal(other Set) bool {
-	if set.Len() != other.Len() {
+func (s set) Equal(other set) bool {
+	if s.Len() != other.Len() {
 		return false
 	}
-	for elem := range set {
-		if !other.Contains(elem) {
+	for elem := range s {
+		if !other.Contain(elem) {
 			return false
 		}
 	}
 	return true
 }
 
-func (set Set) Clone() Set {
-	clonedSet := NewSet()
-	for elem := range set {
-		clonedSet.Add(elem)
+func (s set) Clone() set {
+	cs := NewSet()
+	for elem := range s {
+		cs.Add(elem)
 	}
-	return clonedSet
+	return cs
 }
 
-func (set Set) String() string {
-	items := make([]string, 0, len(set))
+func (s set) String() string {
+	items := make([]string, 0, len(s))
 
-	for elem := range set {
+	for elem := range s {
 		items = append(items, fmt.Sprintf("%v", elem))
 	}
-	return fmt.Sprintf("Set{%s}", strings.Join(items, ", "))
+	return fmt.Sprintf("set{%s}", strings.Join(items, ", "))
 }
 
-func (pair OrderedPair) String() string {
+func (pair orderedPair) String() string {
 	return fmt.Sprintf("(%v, %v)", pair.First, pair.Second)
 }
 
-func (set Set) Pop() interface{} {
-	for item := range set {
-		delete(set, item)
+func (s set) Pop() interface{} {
+	for item := range s {
+		delete(s, item)
 		return item
 	}
 	return nil
 }
 
-func (set Set) PowerSet() Set {
-	powSet := NewSet()
-	nullset := NewSet()
-	powSet.Add(&nullset)
+func (s set) Powerset() set {
+	ps := NewSet()
+	ns := NewSet()
+	ps.Add(&ns)
 
-	for es := range set {
+	for es := range s {
 		u := NewSet()
-		j := powSet.Iter()
+		j := ps.Iter()
 		for er := range j {
 			p := NewSet()
 			if reflect.TypeOf(er).Name() == "" {
-				k := er.(Set)
+				k := er.(set)
 				for ek := range k {
 					p.Add(ek)
 				}
@@ -281,18 +281,18 @@ func (set Set) PowerSet() Set {
 			u.Add(&p)
 		}
 
-		powSet = powSet.Union(u)
+		ps = ps.Union(u)
 	}
 
-	return powSet
+	return ps
 }
 
-func (set Set) CartesianProduct(other Set) Set {
+func (s set) CartesianProduct(other set) set {
 	cartProduct := NewSet()
 
-	for i := range set {
+	for i := range s {
 		for j := range other {
-			elem := OrderedPair{First: i, Second: j}
+			elem := orderedPair{First: i, Second: j}
 			cartProduct.Add(elem)
 		}
 	}
@@ -300,9 +300,9 @@ func (set Set) CartesianProduct(other Set) Set {
 	return cartProduct
 }
 
-func (set Set) ToSlice() []interface{} {
-	keys := make([]interface{}, 0, set.Len())
-	for elem := range set {
+func (s set) ToSlice() []interface{} {
+	keys := make([]interface{}, 0, s.Len())
+	for elem := range s {
 		keys = append(keys, elem)
 	}
 
@@ -310,10 +310,10 @@ func (set Set) ToSlice() []interface{} {
 }
 
 // Marshal creates a JSON array from the set, it marshals all elements
-func (set Set) Marshal() ([]byte, error) {
-	items := make([]string, 0, set.Len())
+func (s set) Marshal() ([]byte, error) {
+	items := make([]string, 0, s.Len())
 
-	for elem := range set {
+	for elem := range s {
 		b, err := json.Marshal(elem)
 		if err != nil {
 			return nil, err
@@ -326,7 +326,7 @@ func (set Set) Marshal() ([]byte, error) {
 }
 
 // Unmarshal recreates a set from a JSON array, it only decodes primitive types. Numbers are decoded as json.Number.
-func (set Set) Unmarshal(b []byte) error {
+func (s set) Unmarshal(b []byte) error {
 	var i []interface{}
 
 	d := json.NewDecoder(bytes.NewReader(b))
@@ -341,7 +341,7 @@ func (set Set) Unmarshal(b []byte) error {
 		case []interface{}, map[string]interface{}:
 			continue
 		default:
-			set.Add(t)
+			s.Add(t)
 		}
 	}
 

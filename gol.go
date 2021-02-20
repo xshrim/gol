@@ -14,8 +14,6 @@ import (
 )
 
 type LogHook func(int, *[]byte) bool
-type Void = struct{}
-type M = map[string]interface{}
 
 // convert map[string]interface{} or F object to string
 // func (f M) Jsonify() string {
@@ -149,12 +147,12 @@ func Flush() {
 }
 
 // create a context with fields using default logger
-func With(ctx M) *Context {
+func With(ctx map[string]interface{}) *Context {
 	return std.With(ctx)
 }
 
 // create a thread-safe context with fields using default logger
-func WithSafe(ctx M) *SafeContext {
+func WithSafe(ctx map[string]interface{}) *SafeContext {
 	return std.WithSafe(ctx)
 }
 
@@ -461,7 +459,7 @@ func (l *Logger) Flush() {
 }
 
 // create a context with fields
-func (l *Logger) With(fd M) *Context {
+func (l *Logger) With(fd map[string]interface{}) *Context {
 	// 	if len(fd) == 0 {
 	// 		return &Context{loggers: []*Logger{l}, buf: nil}
 	// 	} else {
@@ -470,7 +468,7 @@ func (l *Logger) With(fd M) *Context {
 }
 
 // create a thread-safe context with fields
-func (l *Logger) WithSafe(fd M) *SafeContext {
+func (l *Logger) WithSafe(fd map[string]interface{}) *SafeContext {
 	// if len(fd) == 0 {
 	// 	return &SafeContext{loggers: []*Logger{l}, buf: nil}
 	// } else {

@@ -41,7 +41,7 @@ func (l *Logger) HttpHandlerFunc(fn http.HandlerFunc, headers ...string) http.Ha
 		fn(wl, r)
 
 		if l.HasFlag(Ljson) {
-			data := M{
+			data := map[string]interface{}{
 				"status-code":    wl.statusCode,
 				"latency-time":   time.Since(startTime),
 				"client-ip":      r.RemoteAddr,
@@ -101,7 +101,7 @@ func (l *Logger) HttpHandler(handler http.Handler, headers ...string) http.Handl
 		handler.ServeHTTP(wl, r)
 
 		if l.HasFlag(Ljson) {
-			data := M{
+			data := map[string]interface{}{
 				"status-code":    wl.statusCode,
 				"latency-time":   time.Since(startTime),
 				"client-ip":      r.RemoteAddr,

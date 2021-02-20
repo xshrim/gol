@@ -40,6 +40,10 @@ import (
 	"unicode/utf8"
 )
 
+type V = struct{}
+type I = interface{}
+type M = map[string]interface{}
+
 const hexs = "0123456789abcdef"
 
 // var noEscapeTable = [256]bool{}
@@ -68,29 +72,6 @@ const hexs = "0123456789abcdef"
 // 	b[bp] = byte('0' + i)
 // 	return b[bp:]
 // }
-
-func replaceEscapePeriod(str string, flag bool) string {
-	var buf []rune
-	for _, c := range str {
-		if flag {
-			if c == '.' {
-				l := len(buf)
-				if l > 0 && buf[l-1] == '\\' {
-					buf = buf[:l-1]
-					buf = append(buf, '`')
-					continue
-				}
-			}
-		} else {
-			if c == '`' {
-				buf = append(buf, '.')
-				continue
-			}
-		}
-		buf = append(buf, c)
-	}
-	return string(buf)
-}
 
 func toUpper(str string) string {
 	var dst []rune
@@ -129,6 +110,40 @@ func toCapitalize(str string) string {
 		dst = append(dst, v)
 	}
 	return string(dst)
+}
+
+func replaceEscapePeriod(str string, flag bool) string {
+	var buf []rune
+	for _, c := range str {
+		if flag {
+			if c == '.' {
+				l := len(buf)
+				if l > 0 && buf[l-1] == '\\' {
+					buf = buf[:l-1]
+					buf = append(buf, '`')
+					continue
+				}
+			}
+		} else {
+			if c == '`' {
+				buf = append(buf, '.')
+				continue
+			}
+		}
+		buf = append(buf, c)
+	}
+	return string(buf)
+}
+
+func stringEscapeSep(str string, sep rune) string {
+	var buf []rune
+	for _, c := range str {
+		if c == sep {
+			buf = append(buf, '\\')
+		}
+		buf = append(buf, c)
+	}
+	return string(buf)
 }
 
 func stringContainRune(str string, r rune) bool {
@@ -370,11 +385,6 @@ func tojson(dst []byte, v interface{}) []byte {
 	return dst
 }
 
-// convert data to json-like string
-func Jsonify(v interface{}) string {
-	return string(tojson(nil, v))
-}
-
 // marshal json with skipping func fields
 func Marshal(v interface{}) ([]byte, error) {
 	value := reflect.Indirect(reflect.ValueOf(v))
@@ -502,6 +512,56 @@ func Imapset(data map[string]interface{}, keyPath string, val interface{}) error
 	}
 
 	return nil
+}
+
+// convert data to json-like string
+func Jsonify(v interface{}) string {
+	return string(tojson(nil, v))
+}
+
+// get all leaf key paths of the json string
+func Jsleaf(jsonData string, separator ...rune) []string {
+	out := []string{}
+	paths := Jsdig(jsonData, separator...)
+	for idx, path := range paths {
+		if idx < len(paths)-1 {
+			if !stringContainStr(paths[idx+1], paths[idx]+"[") && !stringContainStr(paths[idx+1], paths[idx]+".") {
+				out = append(out, path)
+			}
+		}
+	}
+
+	return out
+}
+
+// get all key paths of the json string
+func Jsdig(jsonData string, separator ...rune) []string {
+	sep := '.'
+	if len(separator) > 0 {
+		sep = separator[0]
+	}
+
+	out := []string{}
+	mapDig(&out, "", Imapify(jsonData), sep)
+
+	return out
+}
+
+// get differences between a and b json strings and return the corresponding key paths
+func Jsdiff(a, b string, separator ...rune) []string {
+	out := []string{}
+	sep := '.'
+	if len(separator) > 0 {
+		sep = separator[0]
+	}
+	paths := Jsleaf(a, sep)
+	for _, path := range paths {
+		if compareInterface(Jsquery(a, path), Jsquery(b, path)) != 0 {
+			out = append(out, path)
+		}
+	}
+
+	return out
 }
 
 // set value of the path key from json string
@@ -676,6 +736,25 @@ func getJsonItem(data []interface{}, p string) interface{} {
 		}
 	} else {
 		return nil
+	}
+}
+
+func mapDig(result *[]string, root string, mp map[string]interface{}, sep rune) {
+	for k, v := range mp {
+		nroot := fmt.Sprintf("%s%c%s", root, sep, stringEscapeSep(k, sep))
+		*result = append(*result, nroot)
+		switch val := v.(type) {
+		case map[string]interface{}:
+			mapDig(result, nroot, val, sep)
+		case []interface{}:
+			for idx, obj := range val {
+				sroot := fmt.Sprintf("%s[%d]", nroot, idx)
+				*result = append(*result, sroot)
+				if nval, ok := obj.(map[string]interface{}); ok {
+					mapDig(result, sroot, nval, sep)
+				}
+			}
+		}
 	}
 }
 
@@ -1305,6 +1384,14 @@ func checkSum(data []byte) uint16 {
 }
 
 func compareInterface(a, b interface{}) int {
+	if a == nil && b != nil {
+		return -1
+	} else if a != nil && b == nil {
+		return 1
+	} else if a == nil && b == nil {
+		return 0
+	}
+
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 
