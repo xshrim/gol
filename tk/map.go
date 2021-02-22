@@ -5,23 +5,24 @@ import (
 	"reflect"
 )
 
-type link struct {
-	v interface{}
-	n *link
-	p *link
+type Link struct {
+	Value interface{}
+	Next  *Link
+	Prev  *Link
 }
 
-type orderedMap struct {
-	m map[interface{}]interface{}
-	h *link
-	t *link
+type Map struct {
+	m    map[interface{}]interface{}
+	head *Link
+	tail *Link
 }
 
-func NewMap(elts ...interface{}) *orderedMap {
-	m := &orderedMap{
-		m: make(map[interface{}]interface{}),
-		h: nil,
-		t: nil,
+// build an ordered map
+func NewMap(elts ...interface{}) *Map {
+	m := &Map{
+		m:    make(map[interface{}]interface{}),
+		head: nil,
+		tail: nil,
 	}
 
 	if len(elts) == 1 && reflect.TypeOf(elts[0]).Kind() == reflect.Map {
@@ -34,93 +35,93 @@ func NewMap(elts ...interface{}) *orderedMap {
 	return m
 }
 
-func (om *orderedMap) Set(key, value interface{}) {
+func (om *Map) Set(key, value interface{}) {
 	om.m[key] = value
-	var prev *link
-	cur := om.h
+	var prev *Link
+	cur := om.head
 	for {
 		if cur == nil {
 			break
 		}
-		i := compareInterface(cur.v, key)
+		i := compareInterface(cur.Value, key)
 		if i >= 0 {
 			break
 		} else {
 			prev = cur
-			cur = cur.n
+			cur = cur.Next
 		}
 	}
 
-	var node *link
+	var node *Link
 	if prev == nil {
-		node = &link{v: key, n: cur}
-		om.h = node
+		node = &Link{Value: key, Next: cur}
+		om.head = node
 	} else {
-		node = &link{v: key, n: cur, p: prev}
-		prev.n = node
+		node = &Link{Value: key, Next: cur, Prev: prev}
+		prev.Next = node
 	}
 
 	if cur == nil {
-		om.t = node
+		om.tail = node
 	} else {
-		cur.p = node
+		cur.Prev = node
 	}
 }
 
-func (om *orderedMap) Remove(key interface{}) {
+func (om *Map) Remove(key interface{}) {
 	delete(om.m, key)
-	var prev *link
-	cur := om.h
+	var prev *Link
+	cur := om.head
 	for {
 		if cur == nil {
 			return
 		}
-		i := compareInterface(cur.v, key)
+		i := compareInterface(cur.Value, key)
 		if i == 0 {
 			break
 		} else if i > 0 {
 			return
 		} else {
 			prev = cur
-			cur = cur.n
+			cur = cur.Next
 		}
 	}
 
 	if prev == nil {
-		om.h = cur.n
+		om.head = cur.Next
 	} else {
-		prev.n = cur.n
+		prev.Next = cur.Next
 	}
 
-	if cur.n != nil {
-		cur.n.p = prev
+	if cur.Next != nil {
+		cur.Next.Prev = prev
 	} else {
-		om.t = cur.p
+		om.tail = cur.Prev
 	}
 }
 
-func (om *orderedMap) Clear() {
+func (om *Map) Clear() {
 	om.m = make(map[interface{}]interface{})
-	om.h = nil
-	om.t = nil
+	om.head = nil
+	om.tail = nil
 }
 
-func (om *orderedMap) Keys(reverse ...bool) []interface{} {
+func (om *Map) Keys(reverse ...bool) []interface{} {
 	keys := []interface{}{}
 	if len(reverse) > 0 && reverse[0] {
-		for p := om.t; p != nil; p = p.p {
-			keys = append(keys, p.v)
+		for p := om.tail; p != nil; p = p.Prev {
+			keys = append(keys, p.Value)
 		}
 	} else {
-		for p := om.h; p != nil; p = p.n {
-			keys = append(keys, p.v)
+		for p := om.head; p != nil; p = p.Next {
+			keys = append(keys, p.Value)
 		}
 	}
 
 	return keys
 }
 
-func (om *orderedMap) Values() []interface{} {
+func (om *Map) Values() []interface{} {
 	values := []interface{}{}
 	for _, v := range om.m {
 		values = append(values, v)
@@ -129,32 +130,32 @@ func (om *orderedMap) Values() []interface{} {
 	return values
 }
 
-func (om *orderedMap) Contain(k interface{}) bool {
+func (om *Map) Contain(k interface{}) bool {
 	_, ok := om.m[k]
 	return ok
 }
 
-func (om *orderedMap) Get(k interface{}) interface{} {
+func (om *Map) Get(k interface{}) interface{} {
 	return om.m[k]
 }
 
-func (om *orderedMap) Len() int {
+func (om *Map) Len() int {
 	return len(om.m)
 }
 
-func (om *orderedMap) Pop(dequeue ...bool) (interface{}, interface{}) {
-	var p *link
+func (om *Map) Pop(dequeue ...bool) (interface{}, interface{}) {
+	var p *Link
 	if len(dequeue) > 0 && dequeue[0] {
-		p = om.t
+		p = om.tail
 	} else {
-		p = om.h
+		p = om.head
 	}
 
 	if p == nil {
 		return nil, nil
 	}
 
-	key := p.v
+	key := p.Value
 	value := om.m[key]
 
 	om.Remove(key)
@@ -162,25 +163,25 @@ func (om *orderedMap) Pop(dequeue ...bool) (interface{}, interface{}) {
 	return key, value
 }
 
-func (om *orderedMap) Iter(reverse ...bool) <-chan [2]interface{} {
+func (om *Map) Iter(reverse ...bool) <-chan [2]interface{} {
 	r := false
 	if len(reverse) > 0 && reverse[0] {
 		r = true
 	}
 
 	c := make(chan [2]interface{})
-	p := om.h
+	p := om.head
 	if r {
-		p = om.t
+		p = om.tail
 	}
 
 	go func() {
 		for p != nil {
-			c <- [2]interface{}{p.v, om.m[p.v]}
+			c <- [2]interface{}{p.Value, om.m[p.Value]}
 			if r {
-				p = p.p
+				p = p.Prev
 			} else {
-				p = p.n
+				p = p.Next
 			}
 		}
 		close(c)
@@ -189,7 +190,7 @@ func (om *orderedMap) Iter(reverse ...bool) <-chan [2]interface{} {
 	return c
 }
 
-func (om *orderedMap) Clone() *orderedMap {
+func (om *Map) Clone() *Map {
 	nm := NewMap()
 	for kv := range om.Iter() {
 		nm.Set(kv[0], kv[1])
@@ -198,7 +199,7 @@ func (om *orderedMap) Clone() *orderedMap {
 	return nm
 }
 
-func (om *orderedMap) Equal(other *orderedMap) bool {
+func (om *Map) Equal(other *Map) bool {
 	if om.Len() != other.Len() {
 		return false
 	}
@@ -214,13 +215,13 @@ func (om *orderedMap) Equal(other *orderedMap) bool {
 	// return true
 }
 
-func (om *orderedMap) Join(mp *orderedMap) {
+func (om *Map) Join(mp *Map) {
 	for kv := range mp.Iter() {
 		om.Set(kv[0], kv[1])
 	}
 }
 
-func (om *orderedMap) Unmarshal(js string) {
+func (om *Map) Unmarshal(js string) {
 	var m map[string]interface{}
 	if err := json.Unmarshal([]byte(js), &m); err == nil {
 		om.Clear()
@@ -230,7 +231,7 @@ func (om *orderedMap) Unmarshal(js string) {
 	}
 }
 
-func (om *orderedMap) Marshal() string {
+func (om *Map) Marshal() string {
 	m := make(map[string]interface{})
 	for k, v := range om.m {
 		if key, ok := k.(string); ok {

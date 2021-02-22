@@ -1,4 +1,4 @@
-package colors
+package color
 
 const (
 	// Reset
@@ -25,14 +25,14 @@ const (
 	BWhite  = "\033[1;37m" // White
 
 	// Underline
-	// UBlack  = "\033[4;30m" // Black
-	// URed    = "\033[4;31m" // Red
-	// UGreen  = "\033[4;32m" // Green
-	// UYellow = "\033[4;33m" // Yellow
-	// UBlue   = "\033[4;34m" // Blue
-	// UPurple = "\033[4;35m" // Purple
-	// UCyan   = "\033[4;36m" // Cyan
-	// UWhite  = "\033[4;37m" // White
+	UBlack  = "\033[4;30m" // Black
+	URed    = "\033[4;31m" // Red
+	UGreen  = "\033[4;32m" // Green
+	UYellow = "\033[4;33m" // Yellow
+	UBlue   = "\033[4;34m" // Blue
+	UPurple = "\033[4;35m" // Purple
+	UCyan   = "\033[4;36m" // Cyan
+	UWhite  = "\033[4;37m" // White
 
 	// Background
 	// OBlack  = "\033[40m" // Black

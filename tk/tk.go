@@ -146,6 +146,15 @@ func stringEscapeSep(str string, sep rune) string {
 	return string(buf)
 }
 
+func stringRepeat(str string, times int) string {
+	out := ""
+	for i := 0; i < times; i++ {
+		out += str
+	}
+
+	return out
+}
+
 func stringContainRune(str string, r rune) bool {
 	for _, c := range str {
 		if c == r {
@@ -2866,7 +2875,7 @@ func ListAll(root string) []string {
 }
 
 // read file line by line
-func ReadFile(fpath string) <-chan string {
+func IterFile(fpath string) <-chan string {
 	f, err := os.Open(fpath)
 	if err != nil {
 		panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
@@ -2891,7 +2900,7 @@ func ReadFile(fpath string) <-chan string {
 }
 
 // read the entire contents of the file
-func ReadFileAll(fpath string) []byte {
+func ReadFile(fpath string) []byte {
 	f, err := os.Open(fpath)
 	if err != nil {
 		panic(fmt.Sprintf("open file %s fail: %s", fpath, err.Error()))
@@ -2934,7 +2943,7 @@ func WriteFile(fpath string, data []byte, append ...bool) error {
 func WordFrequency(fpath string, order bool, analysis func(string) []string) [][2]interface{} {
 	var wordFrequencyMap = make(map[string]int)
 
-	for line := range ReadFile(fpath) {
+	for line := range IterFile(fpath) {
 		var arr []string
 		if analysis != nil {
 			arr = analysis(line)
@@ -3137,6 +3146,17 @@ func Time2Stamp(t string) int64 {
 // convert timestamp to time
 func Stamp2Time(t int64) string {
 	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+}
+
+// format duration to string
+func FormatDuration(d time.Duration) string {
+	return (time.Duration(d.Milliseconds()) * time.Millisecond).String()
+}
+
+// parse duration string
+func ParseDuration(str string) time.Duration {
+	d, _ := time.ParseDuration(str)
+	return d
 }
 
 // gzip compresses the given data

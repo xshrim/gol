@@ -218,8 +218,8 @@ curl -XPOST -d 'traceid=12345&userid=001&username=admin' http://127.0.0.1:8080
 设置上下文字段有以下几种方式:
 
 ```go
-// gol.F与map[string]interface{}等价
-gol.With(gol.F{"url": "www.demo.com", "duration": time.Second}) // 直接作为With函数参数
+// tk.M与map[string]interface{}等价
+gol.With(tk.M{"url": "www.demo.com", "duration": time.Second}) // 直接作为With函数参数
 gol.With(nil).Field(map[string]interface{}{"url": "www.demo.com", "duration": time.Second}) // 通过Field函数设置
 gol.With(nil).Str("url", "www.demo.com").Dur("duration", time.Secomd) // 链式字段设置
 ```
@@ -430,12 +430,12 @@ func main() {
   }`
   gol.Prtln(tk.Jsquery(jsdata, "loc*.[0].prov\\.city"))
   gol.Prtln(tk.Jsquery(jsdata, "hobbies[odd].[0]"))
-  user := gol.M{
+  user := tk.M{
     "name":     "tom",
     "age":      25,
     "children": []Person{Person{"Lucy", 5}, Person{"Lily", 4}},
     "hobbies":    []string{"football", "movie", "read", "music"},
-    "location": []gol.M{gol.M{
+    "location": []tk.M{tk.M{
       "city":   "foo",
       "street": "bar",
     }},

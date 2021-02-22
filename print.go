@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/xshrim/gol/colors"
+	"github.com/xshrim/gol/color"
 )
 
 // check and deal with multiple output arguments
@@ -32,24 +32,24 @@ import (
 // }
 
 // output colorful message to stdout using default logger
-func Cprt(color string, v ...interface{}) {
-	v = append([]interface{}{color}, v...)
-	v = append(v, colors.ColorOff)
+func Cprt(colour string, v ...interface{}) {
+	v = append([]interface{}{colour}, v...)
+	v = append(v, color.ColorOff)
 	Fprt(os.Stdout, v...)
 }
 
 // output colorful format message to stdout using default logger
-func Cprtf(color string, format string, v ...interface{}) {
+func Cprtf(colour string, format string, v ...interface{}) {
 	format = "%s" + format + "%s"
-	v = append([]interface{}{color}, v...)
-	v = append(v, colors.ColorOff)
+	v = append([]interface{}{colour}, v...)
+	v = append(v, color.ColorOff)
 	Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline using default logger
-func Cprtln(color string, v ...interface{}) {
+func Cprtln(colour string, v ...interface{}) {
 	line := fmt.Sprintln(v...)
-	line = color + line[:len(line)-1] + colors.ColorOff
+	line = colour + line[:len(line)-1] + color.ColorOff
 	Fprtln(os.Stdout, line)
 }
 
@@ -109,24 +109,24 @@ func Errf(format string, v ...interface{}) error {
 }
 
 // output colorful message to stdout
-func (l *Logger) Cprt(color string, v ...interface{}) {
-	v = append([]interface{}{color}, v...)
-	v = append(v, colors.ColorOff)
+func (l *Logger) Cprt(colour string, v ...interface{}) {
+	v = append([]interface{}{colour}, v...)
+	v = append(v, color.ColorOff)
 	Fprt(os.Stdout, v...)
 }
 
 // output colorful format message to stdout
-func (l *Logger) Cprtf(color string, format string, v ...interface{}) {
+func (l *Logger) Cprtf(colour string, format string, v ...interface{}) {
 	format = "%s" + format + "%s"
-	v = append([]interface{}{color}, v...)
-	v = append(v, colors.ColorOff)
+	v = append([]interface{}{colour}, v...)
+	v = append(v, color.ColorOff)
 	Fprtf(os.Stdout, format, v...)
 }
 
 // output colorful message to stdout with newline
-func (l *Logger) Cprtln(color string, v ...interface{}) {
+func (l *Logger) Cprtln(colour string, v ...interface{}) {
 	line := fmt.Sprintln(v...)
-	line = color + line[:len(line)-1] + colors.ColorOff
+	line = colour + line[:len(line)-1] + color.ColorOff
 	Fprtln(os.Stdout, line)
 }
 
