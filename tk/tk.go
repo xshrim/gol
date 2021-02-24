@@ -155,6 +155,18 @@ func stringRepeat(str string, times int) string {
 	return out
 }
 
+func stringJoin(strs []string, r rune) string {
+	out := ""
+	for idx, str := range strs {
+		out += str
+		if idx != len(strs)-1 {
+			out += string(r)
+		}
+	}
+
+	return out
+}
+
 func stringContainRune(str string, r rune) bool {
 	for _, c := range str {
 		if c == r {
@@ -211,6 +223,13 @@ func stringSuffixStr(str, sub string) bool {
 		return false
 	}
 	return string(str[len(str)-len(sub):]) == sub
+}
+
+func stringTrimPrefix(s, prefix string) string {
+	if stringPrefixStr(s, prefix) {
+		return s[len(prefix):]
+	}
+	return s
 }
 
 func stringSplit(str string, r rune) []string {
@@ -2939,8 +2958,31 @@ func WriteFile(fpath string, data []byte, append ...bool) error {
 	return nil
 }
 
+// Strip comments in data, [commentSingle, commentMultiStart, commentMultiEnd] can be set
+func StripComment(data []byte, commentSymbols ...string) []byte {
+	reader := NewReader(bytes.NewReader(data))
+	switch len(commentSymbols) {
+	case 0:
+	case 1:
+		reader.commentSingle = commentSymbols[0]
+		reader.commentMultiStart = ""
+		reader.commentMultiEnd = ""
+	case 2:
+		reader.commentSingle = commentSymbols[0]
+		reader.commentMultiStart = commentSymbols[1]
+		reader.commentMultiEnd = commentSymbols[1]
+	default:
+		reader.commentSingle = commentSymbols[0]
+		reader.commentMultiStart = commentSymbols[1]
+		reader.commentMultiEnd = commentSymbols[2]
+	}
+
+	out, _ := ioutil.ReadAll(reader)
+	return out
+}
+
 // count word frequency
-func WordFrequency(fpath string, order bool, analysis func(string) []string) [][2]interface{} {
+func WordFrequency(fpath string, analysis func(string) []string, order ...bool) [][2]interface{} {
 	var wordFrequencyMap = make(map[string]int)
 
 	for line := range IterFile(fpath) {
@@ -2970,7 +3012,7 @@ func WordFrequency(fpath string, order bool, analysis func(string) []string) [][
 		wordFrequency = append(wordFrequency, [2]interface{}{k, v})
 	}
 
-	if order {
+	if len(order) > 0 && order[0] {
 		sort.Slice(wordFrequency, func(i, j int) bool {
 			if wordFrequency[i][1].(int) > wordFrequency[j][1].(int) {
 				return true
@@ -3245,7 +3287,7 @@ func Zip(source, target string, filter ...string) (err error) {
 		}
 
 		if baseDir != "" {
-			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+			header.Name = filepath.Join(baseDir, stringTrimPrefix(path, source))
 		}
 
 		if info.IsDir() {
@@ -3431,7 +3473,7 @@ func BuildPublicKey(publicKeyStr string) (pubKey *ecdsa.PublicKey, e error) {
 	if err != nil {
 		return nil, err
 	}
-	split := strings.Split(string(bytes), "+")
+	split := stringSplit(string(bytes), '+')
 	xStr := split[0]
 	yStr := split[1]
 	x := new(big.Int)
@@ -3472,7 +3514,7 @@ func VerifySign(content []byte, signature string, publicKeyStr string) bool {
 	if err != nil {
 		return false
 	}
-	split := strings.Split(string(decodeSign), "+")
+	split := stringSplit(string(decodeSign), '+')
 	rStr := split[0]
 	sStr := split[1]
 	rr := new(big.Int)

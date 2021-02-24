@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 type Set map[interface{}]struct{}
@@ -245,7 +244,7 @@ func (s Set) String() string {
 	for elem := range s {
 		items = append(items, fmt.Sprintf("%v", elem))
 	}
-	return fmt.Sprintf("Set{%s}", strings.Join(items, ", "))
+	return fmt.Sprintf("Set{%s}", stringJoin(items, ','))
 }
 
 // func (pair orderedPair) String() string {
@@ -323,7 +322,7 @@ func (s Set) Marshal() ([]byte, error) {
 		items = append(items, string(b))
 	}
 
-	return []byte(fmt.Sprintf("[%s]", strings.Join(items, ","))), nil
+	return []byte(fmt.Sprintf("[%s]", stringJoin(items, ','))), nil
 }
 
 // Unmarshal recreates a set from a JSON array, it only decodes primitive types. Numbers are decoded as json.Number.
