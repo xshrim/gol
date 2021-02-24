@@ -2895,13 +2895,14 @@ func ListAll(root string) []string {
 
 // read file line by line
 func IterFile(fpath string) <-chan string {
+	c := make(chan string)
+
 	f, err := os.Open(fpath)
 	if err != nil {
-		panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+		// panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+		return c
 	}
 	//defer f.Close()
-
-	c := make(chan string)
 	go func(fl *os.File) {
 		buf := bufio.NewScanner(fl)
 		defer fl.Close()
@@ -2922,13 +2923,15 @@ func IterFile(fpath string) <-chan string {
 func ReadFile(fpath string) []byte {
 	f, err := os.Open(fpath)
 	if err != nil {
-		panic(fmt.Sprintf("open file %s fail: %s", fpath, err.Error()))
+		// panic(fmt.Sprintf("open file %s fail: %s", fpath, err.Error()))
+		return nil
 	}
 	defer f.Close()
 
 	bytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+		// panic(fmt.Sprintf("read file %s fail: %s", fpath, err.Error()))
+		return nil
 	}
 
 	return bytes
@@ -3206,10 +3209,12 @@ func Gzip(data []byte) []byte {
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
 	if _, err := w.Write(data); err != nil {
-		panic(err)
+		// panic(err)
+		return nil
 	}
 	if err := w.Close(); err != nil {
-		panic(err)
+		// panic(err)
+		return nil
 	}
 	return buf.Bytes()
 }
