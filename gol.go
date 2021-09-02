@@ -66,6 +66,7 @@ type Logger struct {
 	prefix    string      // prefix to write at beginning of each line
 	watchfile string      // the file to watch for reload configurations dynamically
 	level     int         // log level(ERROR, WARN, INFO, DEBUG, TRACE)
+	dtfmt     string      // date time formatter(2006-01-02 15:04:05.000)
 	flag      int         // properties
 	keys      *KeyName    // filed keys
 	writer    io.Writer   // destination for output synchronously
@@ -131,6 +132,11 @@ func GetLevel() int {
 	return std.GetLevel()
 }
 
+// get time formatter config of default logger
+func GetTimeFormatter() string {
+	return std.GetTimeFormatter()
+}
+
 // get flag config of default logger
 func GetFlag() int {
 	return std.GetFlag()
@@ -184,6 +190,11 @@ func Prefix(p string) *Logger {
 // set log level for default logger
 func Level(v int) *Logger {
 	return std.Level(v)
+}
+
+// set time formatter (2006-01-02 15:04:05.000) for default logger
+func TimeFormatter(f string) *Logger {
+	return std.TimeFormatter(f)
 }
 
 // set log flags for default logger
@@ -435,6 +446,13 @@ func (l *Logger) GetLevel() int {
 	return l.level
 }
 
+// get time formatter config
+func (l *Logger) GetTimeFormatter() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.dtfmt
+}
+
 // get flag config
 func (l *Logger) GetFlag() int {
 	l.mu.Lock()
@@ -532,6 +550,14 @@ func (l *Logger) Level(level int) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.level = level
+	return l
+}
+
+// set time formatter (2006-01-02 15:04:05.000)
+func (l *Logger) TimeFormatter(f string) *Logger {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.dtfmt = f
 	return l
 }
 
@@ -894,49 +920,173 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		if l.flag&Lutc != 0 {
 			t = t.UTC()
 		}
-		if l.flag&Ldate != 0 {
-			year, month, day := t.Date()
-			if l.flag&Ljson != 0 {
-				*buf = append(*buf, l.keys.dateKey...)
-			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.Yellow...)
-			}
-			itoa(buf, year, 4)
-			*buf = append(*buf, '/')
-			itoa(buf, int(month), 2)
-			*buf = append(*buf, '/')
-			itoa(buf, day, 2)
-			if l.flag&Ljson != 0 {
-				*buf = append(*buf, "\","...)
-			} else if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.ColorOff...)
-			}
-			*buf = append(*buf, ' ')
-		}
-		if l.flag&(Ltime|Lmsec) != 0 {
-			hour, min, sec := t.Clock()
+
+		if l.dtfmt != "" {
+			dt := t.Format(l.dtfmt)
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, l.keys.timeKey...)
 			} else if l.flag&Lfcolor != 0 {
 				*buf = append(*buf, color.Yellow...)
 			}
-			itoa(buf, hour, 2)
-			*buf = append(*buf, ':')
-			itoa(buf, min, 2)
-			*buf = append(*buf, ':')
-			itoa(buf, sec, 2)
-			if l.flag&Lmsec != 0 {
-				*buf = append(*buf, '.')
-				itoa(buf, t.Nanosecond()/1e3, 6)
-			}
+
+			*buf = append(*buf, dt...)
+
 			if l.flag&Ljson != 0 {
 				*buf = append(*buf, "\","...)
 			} else if l.flag&Lfcolor != 0 {
 				*buf = append(*buf, color.ColorOff...)
 			}
 			*buf = append(*buf, ' ')
+		} else {
+			if l.flag&Ldate != 0 {
+				if l.flag&Ljson != 0 {
+					*buf = append(*buf, l.keys.dateKey...)
+				} else if l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.Yellow...)
+				}
+
+				year, month, day := t.Date()
+				itoa(buf, year, 4)
+				*buf = append(*buf, '/')
+				itoa(buf, int(month), 2)
+				*buf = append(*buf, '/')
+				itoa(buf, day, 2)
+
+				if l.flag&Ljson != 0 {
+					*buf = append(*buf, "\","...)
+				} else if l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.ColorOff...)
+				}
+				*buf = append(*buf, ' ')
+			}
+
+			if l.flag&(Ltime|Lmsec) != 0 {
+				if l.flag&Ljson != 0 {
+					*buf = append(*buf, l.keys.timeKey...)
+				} else if l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.Yellow...)
+				}
+
+				hour, min, sec := t.Clock()
+				itoa(buf, hour, 2)
+				*buf = append(*buf, ':')
+				itoa(buf, min, 2)
+				*buf = append(*buf, ':')
+				itoa(buf, sec, 2)
+				if l.flag&Lmsec != 0 {
+					*buf = append(*buf, '.')
+					itoa(buf, t.Nanosecond()/1e3, 6)
+				}
+
+				if l.flag&Ljson != 0 {
+					*buf = append(*buf, "\","...)
+				} else if l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.ColorOff...)
+				}
+				*buf = append(*buf, ' ')
+			}
 		}
 	}
+
+	if l.flag&Lnolvl == 0 {
+		if l.flag&Ljson != 0 {
+			*buf = append(*buf, l.keys.levelKey...)
+		}
+		switch lv {
+		case PANIC:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BWhite...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "PANIC"...)
+		case FATAL:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BBlue...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "FATAL"...)
+		case ERROR:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BRed...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "ERROR"...)
+		case WARN:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BYellow...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "WARN"...)
+		case NOTIC:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BYellow...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "NOTIC"...)
+		case INFO:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BGreen...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "INFO"...)
+		case DEBUG:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BPurple...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "DEBUG"...)
+		case TRACE:
+			if l.flag&Ljson == 0 {
+				if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+					*buf = append(*buf, color.BCyan...)
+				}
+				if l.flag&Lnobrkt == 0 {
+					*buf = append(*buf, '[')
+				}
+			}
+			*buf = append(*buf, "TRACE"...)
+		}
+		if l.flag&Ljson != 0 {
+			*buf = append(*buf, "\","...)
+		} else {
+			if l.flag&Lnobrkt == 0 {
+				*buf = append(*buf, ']')
+			}
+			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
+				*buf = append(*buf, color.ColorOff...)
+			}
+		}
+		*buf = append(*buf, ' ')
+	}
+
 	if l.flag&Lstack != 0 {
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, l.keys.stackKey...)
@@ -944,13 +1094,17 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 			if l.flag&Lfcolor != 0 {
 				*buf = append(*buf, color.Purple...)
 			}
-			*buf = append(*buf, '<')
+			if l.flag&Lnobrkt == 0 {
+				*buf = append(*buf, '<')
+			}
 		}
 		*buf = append(*buf, fn...)
 		if l.flag&Ljson != 0 {
 			*buf = append(*buf, "\","...)
 		} else {
-			*buf = append(*buf, '>')
+			if l.flag&Lnobrkt == 0 {
+				*buf = append(*buf, '>')
+			}
 			if l.flag&Lfcolor != 0 {
 				*buf = append(*buf, color.ColorOff...)
 			}
@@ -981,87 +1135,6 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, fn, file string, fd []by
 		} else {
 			// *buf = append(*buf, ':')
 			if l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.ColorOff...)
-			}
-		}
-		*buf = append(*buf, ' ')
-	}
-
-	if l.flag&Lnolvl == 0 {
-		if l.flag&Ljson != 0 {
-			*buf = append(*buf, l.keys.levelKey...)
-		}
-		switch lv {
-		case PANIC:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BWhite...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "PANIC"...)
-		case FATAL:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BBlue...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "FATAL"...)
-		case ERROR:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BRed...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "ERROR"...)
-		case WARN:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BYellow...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "WARN"...)
-		case NOTIC:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BYellow...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "NOTIC"...)
-		case INFO:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BGreen...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "INFO"...)
-		case DEBUG:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BPurple...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "DEBUG"...)
-		case TRACE:
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
-				*buf = append(*buf, color.BCyan...)
-			}
-			if l.flag&Ljson == 0 {
-				*buf = append(*buf, '[')
-			}
-			*buf = append(*buf, "TRACE"...)
-		}
-		if l.flag&Ljson != 0 {
-			*buf = append(*buf, "\","...)
-		} else {
-			*buf = append(*buf, ']')
-			if l.flag&Lcolor != 0 || l.flag&Lfcolor != 0 {
 				*buf = append(*buf, color.ColorOff...)
 			}
 		}

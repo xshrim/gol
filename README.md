@@ -32,7 +32,7 @@ func main() {
 
 ![1](./images/1.png)
 
-全局默认日志实例的各项参数支持自定义, 参数设置支持链式调用:
+全局默认日志实例默认启用`Ldate`和`Ltime`的**flag**, 各项参数支持自定义, 参数设置支持链式调用:
 
 ```go
 package main
@@ -54,6 +54,7 @@ gol支持的日志Flag有:
 - Lmsec: 打印毫秒时间
 - Lstack: 打印调用者字段
 - Lnolvl: 不打印级别字段
+- Lnobrkt: 不使用括号包裹stack和level字段
 - Lfile: 打印文件和行号字段
 - Llfile: 打印文件完整路径
 - Ljson: 以json格式打印日志
@@ -115,6 +116,21 @@ gol日志可以以普通格式化方式输出, 也可以输出为json数据, 方
 gol支持通过`DateKey`, `StackKey`, `LevelKey`, `CtxKey`, `MsgKey`等函数自定义json格式输出时的各个日志字段的键值.
 
 ![6](./images/6.png)
+
+gol的日期时间字段可以遵从标准time库的format方法自定输出格式, 自定义格式后, 启用`Ldate`, `Ltime`或`Lmsec`任意**flag**的情况下将可按**TimeFormatter**方法定义的格式输出日期时间, 启用`Ljson`输出模式后, `DateKey`键将失效.
+
+```go
+package main
+import "github.com/xshrim/gol"
+func main() {
+  gol.Info("default time format")
+  gol.TimeFormatter("2006-01-02 15:04:05.000").Info("custom time format")
+  gol.AddFlag(gol.Ljson).TimeFormatter("2006-01-02 15:04:05.000").Info("custom time format with json mode")
+  gol.TimeFormatter("")
+}
+```
+
+![13](./images/13.png)
 
 #### 链式调用
 
@@ -475,7 +491,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
+| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
 | log      | 2688   | 2895   | 741           | 2321         | -              | -          | -                |
 | logrus   | 7254   | 8849   | 4786          | 4429         | 8453           | 12751      | 13890            |
 | gol      | 2750   | 2926   | 768           | 2450         | 2764           | 4585       | 4657             |
@@ -487,7 +503,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
+| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
 | log      | 16     | 36     | 16            | 16           | -              | -          | -                |
 | logrus   | 405    | 505    | 405           | 277          | 469            | 955        | 1048             |
 | gol      | 16     | 36     | 16            | 16           | 16             | 132        | 149              |
@@ -499,7 +515,7 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
+| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
 | log      | 1      | 2      | 1             | 1            | -              | -          | -                |
 | logrus   | 13     | 18     | 13            | 8            | 16             | 19         | 24               |
 | gol      | 1      | 2      | 1             | 1            | 1              | 5          | 6                |

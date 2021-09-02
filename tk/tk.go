@@ -2540,7 +2540,7 @@ func Iter(v ...int) <-chan int {
 }
 
 // return integer slice range start to end with step
-func IterS(v ...int) []int {
+func Slice(v ...int) []int {
 	start := 0
 	end := start
 	step := 1

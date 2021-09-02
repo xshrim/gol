@@ -19,6 +19,7 @@ const (
 	Lmsec                    // microsecond resolution: 01:23:23.123123.  assumes Ltime.
 	Lstack                   // print stack information<package.function>
 	Lnolvl                   // not print level information
+	Lnobrkt                  // not use brackets for stack and level fields
 	Lfile                    // final file name element and line number: d.go:23. overrides Llongfilec/d.go:23
 	Llfile                   // full file name and line number: /a/b/
 	Ljson                    // output json, this flag will override Lcolor and Lfullcolor flag
