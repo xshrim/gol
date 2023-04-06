@@ -6,11 +6,13 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/xshrim/gol/color"
+	"github.com/xshrim/gol/tk"
 )
 
 type LogHook func(int, *[]byte) bool
@@ -464,8 +466,8 @@ func (l *Logger) GetFlag() int {
 func (l *Logger) HotReload(watchfile ...string) *Logger {
 	if l.watchfile == "" && len(watchfile) > 0 { // hot reload can only be set once
 		l.watchfile = watchfile[0]
-		go l.notisfy()
 	}
+	go l.notisfy()
 	return l
 }
 
@@ -1255,14 +1257,15 @@ func (l *Logger) notisfy() {
 	var lastModifyTime int64
 	defaultLevel := l.level
 	defaultFlag := l.flag
+	cpath := l.watchfile
+	if cpath == "" {
+		cpath = filepath.Join(tk.WorkPath(), ".gol")
+		// cpath = "/tmp/.gol"
+		// if runtime.GOOS == "windows" {
+		// 	cpath = "C:\\.gol"
+		// }
+	}
 	for {
-		cpath := l.watchfile
-		if cpath == "" {
-			cpath = "/tmp/.gol"
-			if runtime.GOOS == "windows" {
-				cpath = "C:\\.gol"
-			}
-		}
 		file, err := os.Open(cpath)
 		if err == nil {
 			fileInfo, err := file.Stat()
@@ -1270,13 +1273,17 @@ func (l *Logger) notisfy() {
 				curModifyTime := fileInfo.ModTime().Unix()
 				if curModifyTime > lastModifyTime {
 					lastModifyTime = curModifyTime
+
 					var line []byte
 					for {
 						b := make([]byte, 1)
-						n, _ := file.Read(b)
+						n, err := file.Read(b)
+						if err != nil || err == io.EOF {
+							break
+						}
 						if n > 0 {
 							c := b[0]
-							if c == '\n' {
+							if c == '\r' || c == '\n' {
 								break
 							}
 							line = append(line, c)
@@ -1290,10 +1297,10 @@ func (l *Logger) notisfy() {
 							l.flag = l.flag ^ Ljson
 						}
 					}
-					if bytes.Contains(line, []byte("stackfile")) {
+					if bytes.Contains(line, []byte("stack")) {
 						l.flag = l.flag | Lstack | Lfile
 					}
-					if bytes.Contains(line, []byte("nostackfile")) {
+					if bytes.Contains(line, []byte("nostack")) {
 						if l.flag&Lstack != 0 {
 							l.flag = l.flag ^ Lstack
 						}
@@ -1323,8 +1330,8 @@ func (l *Logger) notisfy() {
 					line = bytes.ReplaceAll(line, []byte("color"), []byte(""))
 					line = bytes.ReplaceAll(line, []byte("fcolor"), []byte(""))
 					line = bytes.ReplaceAll(line, []byte("nocolor"), []byte(""))
-					line = bytes.ReplaceAll(line, []byte("stackfile"), []byte(""))
-					line = bytes.ReplaceAll(line, []byte("nostackfile"), []byte(""))
+					line = bytes.ReplaceAll(line, []byte("stack"), []byte(""))
+					line = bytes.ReplaceAll(line, []byte("nostack"), []byte(""))
 					line = bytes.ReplaceAll(line, []byte(" "), []byte(""))
 					lv := parseLevel(string(line))
 					if lv >= 0 {

@@ -32,7 +32,7 @@ func main() {
 
 ![1](./images/1.png)
 
-全局默认日志实例默认启用`Ldate`和`Ltime`的**flag**, 各项参数支持自定义, 参数设置支持链式调用:
+全局默认日志实例默认启用 `Ldate`和 `Ltime`的**flag**, 各项参数支持自定义, 参数设置支持链式调用:
 
 ```go
 package main
@@ -77,7 +77,7 @@ func main() {
 
 ![3](./images/3.png)
 
-调用gol打印日志的函数分别为`Error`, `Warn`, `Info`, `Debug`, `Trace`, `Fatal`和`Panic`. 所有函数均提供如`Errorf`, `Infof`等格式化输出函数, 日志打印函数均支持不同类型的可变参数, 如:
+调用gol打印日志的函数分别为 `Error`, `Warn`, `Info`, `Debug`, `Trace`, `Fatal`和 `Panic`. 所有函数均提供如 `Errorf`, `Infof`等格式化输出函数, 日志打印函数均支持不同类型的可变参数, 如:
 
 ```go
 package main
@@ -89,9 +89,9 @@ func main() {
 }
 ```
 
-gol的日志打印相关函数均是换行打印, 如需不换行打印, 可使用`Log`和`Logf`函数, 用法为: `gol.Log("debug", "print %s without newline, "text")`.
+gol的日志打印相关函数均是换行打印, 如需不换行打印, 可使用 `Log`和 `Logf`函数, 用法为: `gol.Log("debug", "print %s without newline, "text")`.
 
-此外, gol还内置了`Prt`, `Prtf`, `Prtln`, `Sprt`, `Sprtf`, `Err`, `Errf`这些常用函数, 分别用于不换行打印, 换行打印, 返回字符串和返回错误等. 类似fmt库中的`Print`, `Errorf`. `Prt`和`Prtln`支持自动识别输出流和格式化输出.
+此外, gol还内置了 `Prt`, `Prtf`, `Prtln`, `Sprt`, `Sprtf`, `Err`, `Errf`这些常用函数, 分别用于不换行打印, 换行打印, 返回字符串和返回错误等. 类似fmt库中的 `Print`, `Errorf`. `Prt`和 `Prtln`支持自动识别输出流和格式化输出.
 
 ![7](./images/7.png)
 
@@ -99,25 +99,25 @@ gol的日志打印相关函数均是换行打印, 如需不换行打印, 可使�
 
 #### 日志高亮
 
-gol支持**无高亮**, **仅Level高亮**和**全高亮**的方式显示日志, 两种高亮方式的启用方式为在日志实例的`flag`字段加入`Lcolor`或`Lfcolor`项, 如: `gol.Flag(gol.Ldate | gol.Ltime | gol.Lfcolor)`, 效果分别如下:
+gol支持**无高亮**, **仅Level高亮**和**全高亮**的方式显示日志, 两种高亮方式的启用方式为在日志实例的 `flag`字段加入 `Lcolor`或 `Lfcolor`项, 如: `gol.Flag(gol.Ldate | gol.Ltime | gol.Lfcolor)`, 效果分别如下:
 
 ![4](./images/4.png)
 
 #### 调用定位
 
-gol在log库支持显示调用文件及所在行的基础上, 还支持显示调用函数及其所在package, 此特性需要在日志实例的`flag`字段加入`Lstack`项, 如: `gol.Flag(gol.Ldate | gol.Ltime | gol.Lstack | gol.Lfile | gol.Lfcolor)`, 效果如下:
+gol在log库支持显示调用文件及所在行的基础上, 还支持显示调用函数及其所在package, 此特性需要在日志实例的 `flag`字段加入 `Lstack`项, 如: `gol.Flag(gol.Ldate | gol.Ltime | gol.Lstack | gol.Lfile | gol.Lfcolor)`, 效果如下:
 
 ![5](./images/5.png)
 
 #### 输出模式
 
-gol日志可以以普通格式化方式输出, 也可以输出为json数据, 方便在开发或排障过程中直接使用. 默认进行普通格式化输出, 通过在日志实例的`flag`字段加入`Ljson`项将以json格式输出. 以json格式输出时, `Lcolor`和`Lfcolor`配置将失效.
+gol日志可以以普通格式化方式输出, 也可以输出为json数据, 方便在开发或排障过程中直接使用. 默认进行普通格式化输出, 通过在日志实例的 `flag`字段加入 `Ljson`项将以json格式输出. 以json格式输出时, `Lcolor`和 `Lfcolor`配置将失效.
 
-gol支持通过`DateKey`, `StackKey`, `LevelKey`, `CtxKey`, `MsgKey`等函数自定义json格式输出时的各个日志字段的键值.
+gol支持通过 `DateKey`, `StackKey`, `LevelKey`, `CtxKey`, `MsgKey`等函数自定义json格式输出时的各个日志字段的键值.
 
 ![6](./images/6.png)
 
-gol的日期时间字段可以遵从标准time库的format方法自定输出格式, 自定义格式后, 启用`Ldate`, `Ltime`或`Lmsec`任意**flag**的情况下将可按**TimeFormatter**方法定义的格式输出日期时间, 启用`Ljson`输出模式后, `DateKey`键将失效.
+gol的日期时间字段可以遵从标准time库的format方法自定输出格式, 自定义格式后, 启用 `Ldate`, `Ltime`或 `Lmsec`任意**flag**的情况下将可按**TimeFormatter**方法定义的格式输出日期时间, 启用 `Ljson`输出模式后, `DateKey`键将失效.
 
 ```go
 package main
@@ -152,7 +152,7 @@ func main() {
 
 #### 日志级别
 
-gol支持**OFF**, **PANIC**, **FATAL**, **ERROR**, **WARN**, **NOTIC**, **INFO**, **DEBUG**, **TRACE**, **ALL**九种日志级别, 分别对应数字0, 1, 2, 3, 4, 5, 6, 7, 8, 9. 优先级由高到低, 通过`Level`函数设置可显示级别后, 低于该级别的日志将不打印, `OFF`级别将关闭所有日志打印. 如:
+gol支持**OFF**, **PANIC**, **FATAL**, **ERROR**, **WARN**, **NOTIC**, **INFO**, **DEBUG**, **TRACE**, **ALL**九种日志级别, 分别对应数字0, 1, 2, 3, 4, 5, 6, 7, 8, 9. 优先级由高到低, 通过 `Level`函数设置可显示级别后, 低于该级别的日志将不打印, `OFF`级别将关闭所有日志打印. 如:
 
 ```go
 package main
@@ -190,7 +190,7 @@ func main() {
 
 日志和链路追踪是可观察性遥测技术的重要组成部分, 为了便于在日志数据和调用链路之间相互追溯, 通常在一个或者关联的处理逻辑中加入相同的追踪ID(traceid)等信息, 该逻辑中所有的输出日志都附带这些信息. 这样一组相关日志携带关联数据的情况就是日志上下文.
 
-gol提供了简单易用的上下文功能支持. 通过`With`或者`NewContext`函数即可创建一个非线程安全的上下文, 通过`WithSafe`或者`NewSafeContext`函数即可创建一个线程安全的上下文, 上下文的所有日志都将在保持原日志实例配置的前提下携带上下文特有信息, 该日志实例的其他日志不受影响. 上下文同样支持链式调用. 通过`Field`函数可以设置或删除上下文字段内容.
+gol提供了简单易用的上下文功能支持. 通过 `With`或者 `NewContext`函数即可创建一个非线程安全的上下文, 通过 `WithSafe`或者 `NewSafeContext`函数即可创建一个线程安全的上下文, 上下文的所有日志都将在保持原日志实例配置的前提下携带上下文特有信息, 该日志实例的其他日志不受影响. 上下文同样支持链式调用. 通过 `Field`函数可以设置或删除上下文字段内容.
 
 例如对于一个Web API请求, 请求头或请求体中可能会携带诸如请求ID或追踪ID以及用户ID等信息, 一个请求可能会产生多条日志, 这些日志就可以通过上下文关联起来.
 
@@ -246,7 +246,7 @@ gol.With(nil).Str("url", "www.demo.com").Dur("duration", time.Secomd) // 链式�
 
 #### 标准http库日志集成
 
-gol为标准http库提供日志集成, 通过`HttpHandler`和`HttpHandlerFunc`函数对用户的后台请求响应逻辑(`Handler`或`HandlerFunc`)进行无侵入式封装, 从而自动为基于http标准库的Web服务提供日志输出. gol将依据日志实例的`Ljson`和`Lcolor`标记自动选择http日志的输出格式(json, 高亮, 无高亮). 向`HttpHandler`和`HttpHandlerFunc`函数追加不定长参数还可以输出更多http请求头部信息(参数必须是http header中的字段大写).
+gol为标准http库提供日志集成, 通过 `HttpHandler`和 `HttpHandlerFunc`函数对用户的后台请求响应逻辑(`Handler`或 `HandlerFunc`)进行无侵入式封装, 从而自动为基于http标准库的Web服务提供日志输出. gol将依据日志实例的 `Ljson`和 `Lcolor`标记自动选择http日志的输出格式(json, 高亮, 无高亮). 向 `HttpHandler`和 `HttpHandlerFunc`函数追加不定长参数还可以输出更多http请求头部信息(参数必须是http header中的字段大写).
 
 ```go
 package main
@@ -305,14 +305,14 @@ func main() {
 
 #### 日志热加载
 
-gol允许在不中断应用的情况下动态更新日志级别和输出样式, 实现运行时输出日志的详细度和可视友好度调整, 为应用排障提供便利. 此外此特性还可以实现日志输出的动态关闭与开启. 通过`HotReload`函数开启热加载功能后, 在操作系统终端执行`echo <msg> > /tmp/.gol`即可动态调整日志级别和输出样式, 可以在`HotReload`函数参数中自定义需要监听的热加载文件的路径.
+gol允许在不中断应用的情况下动态更新日志级别和输出样式, 实现运行时输出日志的详细度和可视友好度调整, 为应用排障提供便利. 此外此特性还可以实现日志输出的动态关闭与开启. 通过 `HotReload`函数开启热加载功能后, 在操作系统终端执行 `echo <msg> > /tmp/.gol`即可动态调整日志级别和输出样式, 可以在 `HotReload`函数参数中自定义需要监听的热加载文件的路径.
 
 `<msg>`有四类值, 其作用分别如下:
 
 1. error, info, debug等字符串: 表示限制输出的日志级别, 也可以使用1, 2, 3, 4等对应的数字
 2. color, fcolor, nocolor字符串: 表示三种日志高亮的输出模式
 3. format, json字符串: 表示以格式化或者json格式的方式输出日志
-4. stackfile, nostackfile字符串: 表示是否显示调用定位
+4. stack, nostack字符串: 表示是否显示调用定位
 
 四类值可自由组合, 示例如下:
 
@@ -340,21 +340,21 @@ echo debug > /tmp/.gol   # windows下对应文件为 C:\.gol
 echo color > /tmp/.gol
 echo "warn json" > /tmp/.gol
 echo "format fcolor" > /tmp/.gol
-echo "format stackfile" > /tmp/.gol
+echo "format stack" > /tmp/.gol
 ```
 
-程序将按照指定的配置输出日志, 执行`echo off > /tmp/.gol`将关闭日志输出.
+程序将按照指定的配置输出日志, 执行 `echo off > /tmp/.gol`将关闭日志输出.
 
 **[注意]:**
 
-1. 删除.gol文件或执行`echo 0 > /tmp/.gol`将还原日志原配置.
+1. 删除.gol文件或执行 `echo 0 > /tmp/.gol`将还原日志原配置.
 2. 基于文件的热加载功能的主要目的是临时性调试, 请不要用作gol配置文件, 临时动态调整后建议删除该文件, 以免日志输出与程序内设置不符
 
 ![12](./images/12.png)
 
 #### 日志持久化
 
-gol支持将日志持久化输出到日志文件中, 既可以指定单个日志文件, 也可以指定日志目录和相关轮换参数进行日志文件的**自动轮换**. 而且允许将日志同时输出到标准输出设备和日志文件中. gol的日志持久化操作是异步完成的. 使用方法为通过`NewLogSaverWithLogFile`或`NewLogSaverWithRotation`生成LogSaver并通过`Saver`绑定到日志实例.
+gol支持将日志持久化输出到日志文件中, 既可以指定单个日志文件, 也可以指定日志目录和相关轮换参数进行日志文件的**自动轮换**. 而且允许将日志同时输出到标准输出设备和日志文件中. gol的日志持久化操作是异步完成的. 使用方法为通过 `NewLogSaverWithLogFile`或 `NewLogSaverWithRotation`生成LogSaver并通过 `Saver`绑定到日志实例.
 
 ```go
 package main
@@ -368,9 +368,9 @@ func main() {
 
 **[注意]:**
 
-1. 进行日志轮换时, 日志文件格式为`<程序名>.<序号>.log`
-2. 由于日志持久化是异步完成的, 因此为了保证所有日志都写入文件中, 建议在程序退出前调用`Flush`函数
-3. gol默认将日志输出到**Stderr**(可自定义), 如果通过`Saver`函数指定了日志持久化, 则日志默认会同时输出到默认输出和日志文件中. 可以通过`Writer()`或`UnWriter()`关闭默认输出
+1. 进行日志轮换时, 日志文件格式为 `<程序名>.<序号>.log`
+2. 由于日志持久化是异步完成的, 因此为了保证所有日志都写入文件中, 建议在程序退出前调用 `Flush`函数
+3. gol默认将日志输出到**Stderr**(可自定义), 如果通过 `Saver`函数指定了日志持久化, 则日志默认会同时输出到默认输出和日志文件中. 可以通过 `Writer()`或 `UnWriter()`关闭默认输出
 
 #### 多维可定制输出
 
@@ -489,9 +489,8 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 #### 每次操作执行时间(ns/op)
 
-
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
+| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 2688   | 2895   | 741           | 2321         | -              | -          | -                |
 | logrus   | 7254   | 8849   | 4786          | 4429         | 8453           | 12751      | 13890            |
 | gol      | 2750   | 2926   | 768           | 2450         | 2764           | 4585       | 4657             |
@@ -501,9 +500,8 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 #### 每次操作分配内存(B/op)
 
-
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
+| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 16     | 36     | 16            | 16           | -              | -          | -                |
 | logrus   | 405    | 505    | 405           | 277          | 469            | 955        | 1048             |
 | gol      | 16     | 36     | 16            | 16           | 16             | 132        | 149              |
@@ -513,9 +511,8 @@ go test -bench=. -benchtime=10s -timeout 10m -benchmem -run=none
 
 #### 每次操作内存分配次数(allocs/op)
 
-
 |          | Normal | Format | DiscardWriter | WithoutFlags | WithDebugLevel | WithFields | WithFieldsFormat |
-| ---------- | -------- | -------- | --------------- | -------------- | ---------------- | ------------ | ------------------ |
+| -------- | ------ | ------ | ------------- | ------------ | -------------- | ---------- | ---------------- |
 | log      | 1      | 2      | 1             | 1            | -              | -          | -                |
 | logrus   | 13     | 18     | 13            | 8            | 16             | 19         | 24               |
 | gol      | 1      | 2      | 1             | 1            | 1              | 5          | 6                |

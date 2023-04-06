@@ -2852,6 +2852,25 @@ func ByteSize(str string) (uint64, error) {
 	return uint64(math.Ceil(val)), nil
 }
 
+// get executable file path
+func ExePath() string {
+	ex, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	exePath := filepath.Dir(ex)
+	return exePath
+}
+
+// get working path
+func WorkPath() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
 // check if target is exist
 func IsExist(target string) bool {
 	if _, err := os.Stat(target); err == nil {
@@ -3090,6 +3109,32 @@ func RandString(count int, src ...byte) string {
 	}
 
 	return string(b)
+}
+
+// generate uuid
+func Uuid() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
+// trim space
+func TrimSpace(s string) string {
+	s1 := strings.TrimSpace(strings.Replace(s, "	", " ", -1))
+	regstr := "\\s{2,}"
+	reg, _ := regexp.Compile(regstr)
+	s2 := make([]byte, len(s1))
+	copy(s2, s1)
+	spc_index := reg.FindStringIndex(string(s2))
+	for len(spc_index) > 0 {
+		s2 = append(s2[:spc_index[0]+1], s2[spc_index[1]:]...)
+		spc_index = reg.FindStringIndex(string(s2))
+	}
+	return string(s2)
 }
 
 // ping ip or domain
