@@ -305,7 +305,7 @@ func main() {
 
 #### 日志热加载
 
-gol允许在不中断应用的情况下动态更新日志级别和输出样式, 实现运行时输出日志的详细度和可视友好度调整, 为应用排障提供便利. 此外此特性还可以实现日志输出的动态关闭与开启. 通过 `HotReload`函数开启热加载功能后, 在操作系统终端执行 `echo <msg> > /tmp/.gol`即可动态调整日志级别和输出样式, 可以在 `HotReload`函数参数中自定义需要监听的热加载文件的路径.
+gol允许在不中断应用的情况下动态更新日志级别和输出样式, 实现运行时输出日志的详细度和可视友好度调整, 为应用排障提供便利. 此外此特性还可以实现日志输出的动态关闭与开启. 通过 `HotReload`函数开启热加载功能后, 在操作系统终端执行 `echo <msg> > .gol`即可动态调整日志级别和输出样式, 可以在 `HotReload`函数参数中自定义需要监听的热加载文件的路径.
 
 `<msg>`有四类值, 其作用分别如下:
 
@@ -336,18 +336,19 @@ func main() {
 运行后在终端执行:
 
 ```bash
-echo debug > /tmp/.gol   # windows下对应文件为 C:\.gol
-echo color > /tmp/.gol
-echo "warn json" > /tmp/.gol
-echo "format fcolor" > /tmp/.gol
-echo "format stack" > /tmp/.gol
+# cd到当前工作目录
+echo debug > .gol
+echo color > .gol
+echo "warn json" > .gol
+echo "format fcolor" > .gol
+echo "format stack" > .gol
 ```
 
-程序将按照指定的配置输出日志, 执行 `echo off > /tmp/.gol`将关闭日志输出.
+程序将按照指定的配置输出日志, 执行 `echo off > .gol`或 `echo 0 > .gol`将关闭日志输出.
 
 **[注意]:**
 
-1. 删除.gol文件或执行 `echo 0 > /tmp/.gol`将还原日志原配置.
+1. 删除.gol文件或执行 `echo "" > /tmp/.gol`将还原日志原配置.
 2. 基于文件的热加载功能的主要目的是临时性调试, 请不要用作gol配置文件, 临时动态调整后建议删除该文件, 以免日志输出与程序内设置不符
 
 ![12](./images/12.png)

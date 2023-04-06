@@ -1273,7 +1273,8 @@ func (l *Logger) notisfy() {
 				curModifyTime := fileInfo.ModTime().Unix()
 				if curModifyTime > lastModifyTime {
 					lastModifyTime = curModifyTime
-
+					l.level = defaultLevel
+					l.flag = defaultFlag
 					var line []byte
 					for {
 						b := make([]byte, 1)
@@ -1336,6 +1337,8 @@ func (l *Logger) notisfy() {
 					lv := parseLevel(string(line))
 					if lv >= 0 {
 						l.level = lv
+					} else {
+						l.level = defaultLevel
 					}
 				}
 			}
