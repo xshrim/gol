@@ -15,7 +15,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -32,6 +31,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -250,6 +250,58 @@ func stringSplit(str string, r rune) []string {
 		}
 	}
 	return strs
+}
+
+func leadingInt(s string) (x int64, rem string, err error) {
+	i := 0
+	for ; i < len(s); i++ {
+		c := s[i]
+		if c < '0' || c > '9' {
+			break
+		}
+		if x > (1<<63-1)/10 {
+			// overflow
+			return 0, "", fmt.Errorf("time: bad [0-9]*")
+		}
+		x = x*10 + int64(c) - '0'
+		if x < 0 {
+			// overflow
+			return 0, "", fmt.Errorf("time: bad [0-9]*")
+		}
+	}
+	return x, s[i:], nil
+}
+
+func leadingFraction(s string) (x int64, scale float64, rem string) {
+	i := 0
+	scale = 1
+	overflow := false
+	for ; i < len(s); i++ {
+		c := s[i]
+		if c < '0' || c > '9' {
+			break
+		}
+		if overflow {
+			continue
+		}
+		if x > (1<<63-1)/10 {
+			// It's possible for overflow to give a positive number, so take care.
+			overflow = true
+			continue
+		}
+		y := x*10 + int64(c) - '0'
+		if y < 0 {
+			overflow = true
+			continue
+		}
+		x = y
+		scale *= 10
+	}
+	return x, scale, s[i:]
+}
+
+func bashEscape(str string) string {
+	return `'` + strings.Replace(str, `'`, `'\''`, -1) + `'`
 }
 
 func mapi2maps(i interface{}) interface{} {
@@ -2775,8 +2827,19 @@ func Filter(list interface{}, fn func(interface{}) bool) interface{} {
 }
 
 // return rune length of the string
+//
+//	func Strlen(str string) int {
+//		return len([]rune(str))
+//	}
 func Strlen(str string) int {
-	return len([]rune(str))
+	length := 0
+	for _, r := range []rune(str) {
+		length += 1
+		if unicode.Is(unicode.Han, r) {
+			length += 1
+		}
+	}
+	return length
 }
 
 // return substring by rune
@@ -2802,6 +2865,23 @@ func Lower(str string) string {
 // convert to Capitalize
 func Capitalize(str string) string {
 	return toCapitalize(str)
+}
+
+func StrAlign(str, placeholder, align string, length int) string {
+	str = strings.TrimSpace(strings.ReplaceAll(str, "\n", "\\n"))
+	if Strlen(str) >= length {
+		return str
+	}
+	phnum := length - Strlen(str)
+	left := strings.Repeat(placeholder, phnum/2)
+	right := strings.Repeat(placeholder, phnum-phnum/2)
+	if align == "left" {
+		return str + left + right
+	} else if align == "right" {
+		return left + right + str
+	} else {
+		return left + str + right
+	}
 }
 
 // convert byte size to human readable format
@@ -2851,6 +2931,46 @@ func ByteSize(str string) (uint64, error) {
 	val *= multiplier
 	return uint64(math.Ceil(val)), nil
 }
+
+// func GroupSlice[T interface{}](slc []T, num int64) [][]T {
+// 	max := int64(len(slc))
+// 	//判断数组大小是否小于等于指定分割大小的值，是则把原数组放入二维数组返回
+// 	if max <= num {
+// 		return [][]T{slc}
+// 	}
+// 	//获取应该数组分割为多少份
+// 	var quantity int64
+// 	if max%num == 0 {
+// 		quantity = max / num
+// 	} else {
+// 		quantity = (max / num) + 1
+// 	}
+// 	//声明分割好的二维数组
+// 	var segments = make([][]T, 0)
+// 	//声明分割数组的截止下标
+// 	var start, end, i int64
+// 	for i = 1; i <= quantity; i++ {
+// 		end = i * num
+// 		if i != quantity {
+// 			segments = append(segments, slc[start:end])
+// 		} else {
+// 			segments = append(segments, slc[start:])
+// 		}
+// 		start = i * num
+// 	}
+// 	return segments
+// }
+
+// func SortedKeys[T interface{}](m map[string]T) []string {
+// 	keys := make([]string, 0, len(m))
+
+// 	for k := range m {
+// 		keys = append(keys, k)
+// 	}
+
+// 	sort.Sort(sort.StringSlice(keys))
+// 	return keys
+// }
 
 // get executable file path
 func ExePath() string {
@@ -3122,6 +3242,21 @@ func Uuid() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
+func Round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+
+// float64 fix
+func ToFixed(num float64, precisions ...int) float64 {
+	precision := 3
+	if len(precisions) > 0 {
+		precision = precisions[0]
+	}
+
+	output := math.Pow(10, float64(precision))
+	return float64(Round(num*output)) / output
+}
+
 // trim space
 func TrimSpace(s string) string {
 	s1 := strings.TrimSpace(strings.Replace(s, "	", " ", -1))
@@ -3135,86 +3270,6 @@ func TrimSpace(s string) string {
 		spc_index = reg.FindStringIndex(string(s2))
 	}
 	return string(s2)
-}
-
-// ping ip or domain
-func Ping(ip string) bool {
-	type ICMP struct {
-		Type        uint8
-		Code        uint8
-		Checksum    uint16
-		Identifier  uint16
-		SequenceNum uint16
-	}
-
-	icmp := ICMP{
-		Type: 8,
-	}
-
-	recvBuf := make([]byte, 32)
-	var buffer bytes.Buffer
-
-	_ = binary.Write(&buffer, binary.BigEndian, icmp)
-	icmp.Checksum = checkSum(buffer.Bytes())
-	buffer.Reset()
-	_ = binary.Write(&buffer, binary.BigEndian, icmp)
-
-	Time, _ := time.ParseDuration("2s")
-	conn, err := net.DialTimeout("ip4:icmp", ip, Time)
-	if err != nil {
-		return exec.Command("ping", ip, "-c", "2", "-i", "1", "-W", "3").Run() == nil
-	}
-	_, err = conn.Write(buffer.Bytes())
-	if err != nil {
-		return false
-	}
-	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-	num, err := conn.Read(recvBuf)
-	if err != nil {
-		return false
-	}
-
-	_ = conn.SetReadDeadline(time.Time{})
-
-	return string(recvBuf[0:num]) != ""
-}
-
-// get local ipv4 address
-func IPv4() []string {
-	out := []string{"127.0.0.1"}
-	if addrs, err := net.InterfaceAddrs(); err == nil {
-		for _, address := range addrs {
-			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-				out = append(out, ipnet.IP.String())
-			}
-		}
-	}
-	return out
-}
-
-// get all ipv4 addresses in the range of the cidr
-func Hosts(cidr string) []string {
-	ip, ipnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil
-	}
-
-	var ips []string
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); {
-		ips = append(ips, ip.String())
-
-		for j := len(ip) - 1; j >= 0; j-- {
-			ip[j]++
-			if ip[j] > 0 {
-				break
-			}
-		}
-	}
-
-	if len(ips) < 2 {
-		return []string{}
-	}
-	return ips[1 : len(ips)-1]
 }
 
 // get current time
@@ -3244,9 +3299,148 @@ func FormatDuration(d time.Duration) string {
 }
 
 // parse duration string
-func ParseDuration(str string) time.Duration {
-	d, _ := time.ParseDuration(str)
-	return d
+func ParseDuration(s string) (time.Duration, error) {
+	var unitMap = map[string]int64{
+		"ns": int64(time.Nanosecond),
+		"us": int64(time.Microsecond),
+		"µs": int64(time.Microsecond), // U+00B5 = micro symbol
+		"μs": int64(time.Microsecond), // U+03BC = Greek letter mu
+		"ms": int64(time.Millisecond),
+		"s":  int64(time.Second),
+		"m":  int64(time.Minute),
+		"h":  int64(time.Hour),
+		"d":  int64(time.Hour) * 24,
+		"w":  int64(time.Hour) * 168,
+	}
+
+	// [-+]?([0-9]*(\.[0-9]*)?[a-z]+)+
+	orig := s
+	var d int64
+	neg := false
+
+	// Consume [-+]?
+	if s != "" {
+		c := s[0]
+		if c == '-' || c == '+' {
+			neg = c == '-'
+			s = s[1:]
+		}
+	}
+	// Special case: if all that is left is "0", this is zero.
+	if s == "0" {
+		return 0, nil
+	}
+	if s == "" {
+		return 0, fmt.Errorf("time: invalid duration %s", orig)
+	}
+	for s != "" {
+		var (
+			v, f  int64       // integers before, after decimal point
+			scale float64 = 1 // value = v + f/scale
+		)
+
+		var err error
+
+		// The next character must be [0-9.]
+		if !(s[0] == '.' || '0' <= s[0] && s[0] <= '9') {
+			return 0, fmt.Errorf("time: invalid duration %s", orig)
+		}
+		// Consume [0-9]*
+		pl := len(s)
+		v, s, err = leadingInt(s)
+		if err != nil {
+			return 0, fmt.Errorf("time: invalid duration %s", orig)
+		}
+		pre := pl != len(s) // whether we consumed anything before a period
+
+		// Consume (\.[0-9]*)?
+		post := false
+		if s != "" && s[0] == '.' {
+			s = s[1:]
+			pl := len(s)
+			f, scale, s = leadingFraction(s)
+			post = pl != len(s)
+		}
+		if !pre && !post {
+			// no digits (e.g. ".s" or "-.s")
+			return 0, fmt.Errorf("time: invalid duration %s", orig)
+		}
+
+		// Consume unit.
+		i := 0
+		for ; i < len(s); i++ {
+			c := s[i]
+			if c == '.' || '0' <= c && c <= '9' {
+				break
+			}
+		}
+		if i == 0 {
+			return 0, fmt.Errorf("time: missing unit in duration %s", orig)
+		}
+		u := s[:i]
+		s = s[i:]
+		unit, ok := unitMap[u]
+		if !ok {
+			return 0, fmt.Errorf("time: unknown unit %s in duration %s", u, orig)
+		}
+		if v > (1<<63-1)/unit {
+			// overflow
+			return 0, fmt.Errorf("time: invalid duration %s", orig)
+		}
+		v *= unit
+		if f > 0 {
+			// float64 is needed to be nanosecond accurate for fractions of hours.
+			// v >= 0 && (f*unit/scale) <= 3.6e+12 (ns/h, h is the largest unit)
+			v += int64(float64(f) * (float64(unit) / scale))
+			if v < 0 {
+				// overflow
+				return 0, fmt.Errorf("time: invalid duration %s", orig)
+			}
+		}
+		d += v
+		if d < 0 {
+			// overflow
+			return 0, fmt.Errorf("time: invalid duration %s", orig)
+		}
+	}
+
+	if neg {
+		d = -d
+	}
+	return time.Duration(d), nil
+}
+
+// get timestamp range
+func TsRange(ranger string) (int64, int64) {
+	var st, et time.Time
+
+	if _, err := strconv.Atoi(ranger); err == nil {
+		ranger = ranger + "d"
+	}
+
+	if dur, err := ParseDuration(ranger); err == nil {
+		et = time.Now().Local()
+		st = et.Add(-1 * dur)
+	} else {
+		est := strings.Split(ranger, "--")
+		ststr := strings.TrimSpace(est[0])
+		if !strings.Contains(ststr, " ") {
+			st, _ = time.ParseInLocation("2006-01-02", ststr, time.Local)
+		} else {
+			st, _ = time.ParseInLocation("2006-01-02 15:04:05", ststr, time.Local)
+		}
+		et = time.Now().Local()
+		if len(est) > 1 {
+			etstr := strings.TrimSpace(est[1])
+			if !strings.Contains(etstr, " ") {
+				et, _ = time.ParseInLocation("2006-01-02", etstr, time.Local)
+			} else {
+				et, _ = time.ParseInLocation("2006-01-02 15:04:05", etstr, time.Local)
+			}
+		}
+	}
+
+	return st.UnixMilli(), et.UnixMilli()
 }
 
 // gzip compresses the given data
@@ -3451,8 +3645,34 @@ func Decode(src string) (string, error) {
 	return string(b), nil
 }
 
+// encode url
+func UrlEncodeBase64(str string) string {
+	str = strings.ReplaceAll(str, "+", ".")
+	str = strings.ReplaceAll(str, "/", "_")
+	str = strings.ReplaceAll(str, "=", "-")
+	return str
+}
+
+// decode url
+func UrlDecodeBase64(str string) string {
+	str = strings.ReplaceAll(str, ".", "+")
+	str = strings.ReplaceAll(str, "_", "/")
+	str = strings.ReplaceAll(str, "-", "=")
+	return str
+}
+
 // encrypt src data with aes algorithm
-func AesEncrypt(src []byte, keyStr string) ([]byte, error) {
+func Encrypt(src []byte, keyStr string) ([]byte, error) {
+	if len(keyStr) < 16 {
+		keyStr = fmt.Sprintf("%16s", keyStr)
+	} else if len(keyStr) < 24 {
+		keyStr = fmt.Sprintf("%24s", keyStr)
+	} else if len(keyStr) < 32 {
+		keyStr = fmt.Sprintf("%32s", keyStr)
+	} else {
+		keyStr = keyStr[:32]
+	}
+
 	key := []byte(keyStr)
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -3467,14 +3687,51 @@ func AesEncrypt(src []byte, keyStr string) ([]byte, error) {
 }
 
 // decrypt src data with aes algorithm
-func AesDecrypt(src []byte, keyStr string) []byte {
+func Decrypt(src []byte, keyStr string) ([]byte, error) {
+	if len(keyStr) < 16 {
+		keyStr = fmt.Sprintf("%16s", keyStr)
+	} else if len(keyStr) < 24 {
+		keyStr = fmt.Sprintf("%24s", keyStr)
+	} else if len(keyStr) < 32 {
+		keyStr = fmt.Sprintf("%32s", keyStr)
+	} else {
+		keyStr = keyStr[:32]
+	}
+
 	key := []byte(keyStr)
-	block, _ := aes.NewCipher(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
 	blockmode := cipher.NewCBCDecrypter(block, key)
 	blockmode.CryptBlocks(src, src)
 	n := len(src)
 	unpadnum := int(src[n-1])
-	return src[:n-unpadnum]
+	return src[:n-unpadnum], nil
+}
+
+// encrypt string with aes algorithm
+func EncryptStr(str string, keyStr string) (string, error) {
+	enc, err := Encrypt([]byte(str), keyStr)
+	if err != nil {
+		return "", err
+	}
+
+	return Encode(string(enc)), nil
+}
+
+// decrypt string with aes algorithm
+func DecryptStr(str string, keyStr string) (string, error) {
+	dec, err := Decode(str)
+	if err != nil {
+		return "", err
+	}
+
+	decb, err := Decrypt([]byte(dec), keyStr)
+	if err != nil {
+		return "", err
+	}
+	return string(decb), nil
 }
 
 // generate asymmetric key pair
@@ -3590,6 +3847,21 @@ func MD5(data []byte) string {
 	return fmt.Sprintf("%x", sum)
 }
 
+func IsBase64Encoded(str string) bool {
+	bs64pattern := regexp.MustCompile(`^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$`)
+	if !bs64pattern.MatchString(str) {
+		return false
+	}
+	// if len(str)%4 != 0 {
+	// 	return false
+	// }
+	if data, err := base64.StdEncoding.DecodeString(str); err != nil {
+		return false
+	} else {
+		return utf8.Valid(data)
+	}
+}
+
 // execute command with realtime output
 func Exec(command string, args ...string) <-chan string {
 	out := make(chan string, 1000)
@@ -3621,6 +3893,223 @@ func Exec(command string, args ...string) <-chan string {
 	return out
 }
 
+// wait until the time
+func WaitUntil(t string) {
+	ds := -1
+	tt := strings.Split(t, " ")
+	if len(tt) > 1 {
+		ds, _ = strconv.Atoi(tt[1])
+	}
+
+	ts := strings.Split(tt[0], ":")
+	hour, _ := strconv.Atoi(ts[0])
+	minute := 0
+	second := 0
+	if len(ts) > 1 {
+		minute, _ = strconv.Atoi(ts[1])
+	}
+	if len(ts) > 2 {
+		second, _ = strconv.Atoi(ts[2])
+	}
+	t = fmt.Sprintf("%02d:%02d:%02d", hour, minute, second)
+
+	ct := time.Now().Local()
+	loc, _ := time.LoadLocation("Local")
+
+	if ds >= 0 {
+		if int(ct.Weekday()) <= ds {
+			ct = ct.Add(time.Hour * 24 * time.Duration(ds-int(ct.Weekday())))
+		} else {
+			ct = ct.Add(time.Hour * 24 * time.Duration(7+ds-int(ct.Weekday())))
+		}
+	}
+
+	dt, _ := time.ParseInLocation("2006-01-02 15:04:05", fmt.Sprintf("%04d-%02d-%02d %s", ct.Year(), ct.Month(), ct.Day(), t), loc)
+
+	if dt.Before(ct) {
+		dt = dt.Add(time.Hour * 24)
+	}
+
+	select {
+	case <-time.After(dt.Sub(ct)):
+		return
+	}
+}
+
+// if the string is an ip address
+func IsIP(str string) bool {
+	matched, _ := regexp.MatchString(`^^((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})(\.((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})){3}$`, str)
+	return matched
+}
+
+// switch length to subnetmask
+func LenToSubNetMask(subnet int) string {
+	var buff bytes.Buffer
+	for i := 0; i < subnet; i++ {
+		buff.WriteString("1")
+	}
+	for i := subnet; i < 32; i++ {
+		buff.WriteString("0")
+	}
+	masker := buff.String()
+	a, _ := strconv.ParseUint(masker[:8], 2, 64)
+	b, _ := strconv.ParseUint(masker[8:16], 2, 64)
+	c, _ := strconv.ParseUint(masker[16:24], 2, 64)
+	d, _ := strconv.ParseUint(masker[24:32], 2, 64)
+	resultMask := fmt.Sprintf("%v.%v.%v.%v", a, b, c, d)
+	return resultMask
+}
+
+// switch subnetmask to length
+func SubNetMaskToLen(netmask string) (int, error) {
+	ipSplitArr := strings.Split(netmask, ".")
+	if len(ipSplitArr) != 4 {
+		return 0, fmt.Errorf("netmask:%v is not valid, pattern should like: 255.255.255.0", netmask)
+	}
+	ipv4MaskArr := make([]byte, 4)
+	for i, value := range ipSplitArr {
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			return 0, fmt.Errorf("ipMaskToInt call strconv.Atoi error:[%v] string value is: [%s]", err, value)
+		}
+		if intValue > 255 {
+			return 0, fmt.Errorf("netmask cannot greater than 255, current value is: [%s]", value)
+		}
+		ipv4MaskArr[i] = byte(intValue)
+	}
+
+	ones, _ := net.IPv4Mask(ipv4MaskArr[0], ipv4MaskArr[1], ipv4MaskArr[2], ipv4MaskArr[3]).Size()
+	return ones, nil
+}
+
+// get ips from subnet
+func GetIPsInSubNet(ipAddr string, subMask ...string) ([]string, error) {
+	subnetMask := subMask[0]
+	if subnetMask == "" && strings.Contains(ipAddr, "/") {
+		ipmask := strings.Split(ipAddr, "/")
+		ipAddr = ipmask[0]
+		subnetMask = ipmask[1]
+	}
+	if subnet, err := strconv.Atoi(subnetMask); err == nil {
+		subnetMask = LenToSubNetMask(subnet)
+	}
+	ip := net.ParseIP(ipAddr)
+	mask := net.IPMask(net.ParseIP(subnetMask).To4())
+	// 获取 IP 地址所在的网络
+	_, ipNet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip, countBits(mask)))
+	if err != nil {
+		return nil, err
+	}
+	// 遍历网络中的 IP 地址
+	ips := []string{}
+	for {
+		ip = ip_inc(ip)
+		if ipNet.Contains(ip) == false {
+			break
+		}
+		ips = append(ips, ip.String())
+	}
+	return ips, nil
+}
+
+// 计算子网掩码中的位数
+func countBits(mask net.IPMask) int {
+	count := 0
+	for _, b := range mask {
+		for b > 0 {
+			b &= (b - 1)
+			count++
+		}
+	}
+	return count
+}
+
+// IP地址加1的操作
+func ip_inc(ip net.IP) net.IP {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+	return ip
+}
+
+// get ips from range
+func GetIPsInRange(ipstr string) []string {
+	var ips []string
+	for _, iprstr := range strings.Split(ipstr, ",") {
+		iprstr = strings.TrimSpace(iprstr)
+		ipr := strings.Split(iprstr, "-")
+		if len(ipr) > 1 {
+			start := ipr[0]
+			end := ipr[1]
+			if !strings.Contains(end, ".") {
+				ss := strings.Split(start, ".")
+				ss[3] = end
+				end = strings.Join(ss, ".")
+			}
+
+			startIp := net.ParseIP(start)
+			ips = append(ips, start)
+			for {
+				ip := ip_inc(startIp)
+				if ip.String() == end || len(ips) > 1024 {
+					break
+				}
+				ips = append(ips, ip.String())
+			}
+			ips = append(ips, end)
+		} else {
+			if strings.Contains(iprstr, "/") {
+				ips, _ = GetIPsInSubNet(iprstr)
+			} else {
+				ips = append(ips, iprstr)
+			}
+		}
+	}
+
+	return ips
+}
+
+// get ports from range
+func GetPortsInRange(portstr string) []int {
+	var ports []int
+	for _, portrstr := range strings.Split(portstr, ",") {
+		portstr = strings.TrimSpace(portrstr)
+		portrs := strings.Split(portstr, "-")
+		if len(portrs) > 1 {
+			start, err := strconv.Atoi(portrs[0])
+			if err != nil {
+				continue
+			}
+			end, err := strconv.Atoi(portrs[1])
+			if err != nil {
+				continue
+			}
+
+			for i := start; i <= end; i++ {
+				ports = append(ports, i)
+			}
+		} else {
+			if tmp, err := strconv.Atoi(portstr); err == nil {
+				ports = append(ports, tmp)
+			}
+		}
+	}
+
+	return ports
+}
+
+// get function name
+func FuncName(i interface{}) string {
+	if i == nil {
+		return "nil"
+	}
+
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
 // parse url params
 func UrlParams(rawUrl string) (map[string][]string, error) {
 	stUrl, err := url.Parse(rawUrl)
@@ -3632,110 +4121,130 @@ func UrlParams(rawUrl string) (map[string][]string, error) {
 	return m, nil
 }
 
-// send http get request
-func HttpGet(rawUrl string, args ...string) (int, []byte) {
-	if stringIndex(rawUrl, "http") != 0 {
-		rawUrl = "http://" + rawUrl
-	}
-
-	// rawUrl = url.QueryEscape(rawUrl)
-	client := http.Client{
+func request(method, url string, headers map[string]interface{}, payload []byte, timeout time.Duration) (resp *http.Response, err error) {
+	client := &http.Client{
+		Timeout: timeout * time.Second,
 		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			Proxy: http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
 		},
 	}
 
-	req, _ := http.NewRequest("GET", rawUrl, nil)
+	req, err := http.NewRequest(method, url, bytes.NewReader([]byte(payload)))
+	if err != nil {
+		return
+	}
 
-	// req.Header.Del("Cookie")
-	// req.Header.Del("Authorization")
-	if len(args) > 0 {
-		hds := stringSplit(args[0], '|')
-		for _, item := range hds {
-			kv := stringSplit(item, ':')
-			if len(kv) > 1 {
-				switch toLower(kv[0]) {
-				case "cookie":
-					req.Header.Set("Cookie", kv[1])
-				case "auth", "basic", "token":
-					if v := stringSplit(kv[1], '/'); len(v) > 0 {
-						req.SetBasicAuth(v[0], v[1])
-					} else {
-						req.Header.Add("Authorization", "Bearer "+v[0])
-					}
-				case "agent":
-					req.Header.Add("User-Agent", kv[1])
-				}
-			}
+	for k, v := range headers {
+		vstr, _ := v.(string)
+		req.Header.Add(k, vstr)
+	}
+
+	if method == "POST" {
+		if _, ok := headers["Content-Type"]; !ok {
+			req.Header.Set("Content-Type", "application/json")
 		}
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return 600, []byte(fmt.Sprintf("request %s failed: %s", rawUrl, err.Error()))
-	}
+	resp, err = client.Do(req)
+
+	return
+}
+
+// get http request header
+func HttpHeader(method, url string, headers map[string]interface{}, payload []byte, timeout time.Duration) (header http.Header, err error) {
+	resp, err := request(method, url, headers, payload, timeout)
 	defer resp.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 600, []byte(fmt.Sprintf("read response %s failed: %s", rawUrl, err.Error()))
-	}
+	header = resp.Header
 
-	return resp.StatusCode, bodyBytes
+	return
+}
+
+// send http request
+func HttpRequest(method, url string, headers map[string]interface{}, payload []byte, timeout time.Duration) (latency int64, statuscode int, response []byte, err error) {
+	defer func(t time.Time) {
+		latency = time.Since(t).Milliseconds()
+	}(time.Now())
+
+	resp, err := request(method, url, headers, payload, timeout)
+	defer resp.Body.Close()
+
+	response, err = ioutil.ReadAll(resp.Body)
+	statuscode = resp.StatusCode
+
+	return
 }
 
 // send http post request
-func HttpPost(rawUrl string, jsonData []byte, args ...string) (int, []byte) {
-	if stringIndex(rawUrl, "http") != 0 {
-		rawUrl = "http://" + rawUrl
+func HttpPost(url string, headers map[string]interface{}, payload []byte, timeout int64) (int, []byte) {
+	_, sc, resp, _ := HttpRequest("POST", url, headers, payload, time.Duration(timeout)*time.Second)
+
+	return sc, resp
+}
+
+// send http get request
+func HttpGet(url string, headers map[string]interface{}, timeout int64) (int, []byte) {
+	_, sc, resp, _ := HttpRequest("GET", url, headers, nil, time.Duration(timeout)*time.Second)
+
+	return sc, resp
+}
+
+// Http2Curl returns a CurlCommand corresponding to an http.Request
+func Http2Curl(req *http.Request) (string, error) {
+	var command []string
+	if req.URL == nil {
+		return "", fmt.Errorf("getCurlCommand: invalid request, req.URL is nil")
 	}
 
-	// rawUrl = url.QueryEscape(rawUrl)
-	client := http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+	command = append(command, "curl")
+
+	schema := req.URL.Scheme
+	requestURL := req.URL.String()
+	if schema == "" {
+		schema = "http"
+		if req.TLS != nil {
+			schema = "https"
+		}
+		requestURL = schema + "://" + req.Host + req.URL.Path
 	}
 
-	req, _ := http.NewRequest("POST", rawUrl, bytes.NewBuffer(jsonData))
+	if schema == "https" {
+		command = append(command, "-k")
+	}
 
-	req.Header.Set("Content-Type", "application/json")
+	command = append(command, "-X", bashEscape(req.Method))
 
-	// req.Header.Del("Cookie")
-	// req.Header.Del("Authorization")
-	if len(args) > 0 {
-		hds := stringSplit(args[0], '|')
-		for _, item := range hds {
-			kv := stringSplit(item, ':')
-			if len(kv) > 1 {
-				switch toLower(kv[0]) {
-				case "cookie":
-					req.Header.Set("Cookie", kv[1])
-				case "auth", "basic", "token":
-					if v := stringSplit(kv[1], '/'); len(v) > 0 {
-						req.SetBasicAuth(v[0], v[1])
-					} else {
-						req.Header.Add("Authorization", "Bearer "+v[0])
-					}
-				case "agent":
-					req.Header.Add("User-Agent", kv[1])
-				}
-			}
+	if req.Body != nil {
+		var buff bytes.Buffer
+		_, err := buff.ReadFrom(req.Body)
+		if err != nil {
+			return "", fmt.Errorf("getCurlCommand: buffer read from body error: %w", err)
+		}
+		// reset body for potential re-reads
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(buff.Bytes()))
+		if len(buff.String()) > 0 {
+			bodyEscaped := bashEscape(buff.String())
+			command = append(command, "-d", bodyEscaped)
 		}
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return 600, []byte(fmt.Sprintf("request %s failed: %s", rawUrl, err.Error()))
-	}
-	defer resp.Body.Close()
+	var keys []string
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 600, []byte(fmt.Sprintf("read response %s failed: %s", rawUrl, err.Error()))
+	for k := range req.Header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		command = append(command, "-H", bashEscape(fmt.Sprintf("%s: %s", k, strings.Join(req.Header[k], " "))))
 	}
 
-	return resp.StatusCode, bodyBytes
+	command = append(command, bashEscape(requestURL))
+
+	command = append(command, "--compressed")
+
+	return strings.Join(command, " "), nil
 }
