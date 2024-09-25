@@ -386,6 +386,52 @@ func GetLatestTradingDay() string {
 	return day.Format("2006-01-02")
 }
 
+// GetPrevTradingDay 返回前一个交易日string类型日期：YYYY-mm-dd
+func GetPrevTradingDay() string {
+	today := time.Now()
+	holidays := chinaHolidays[fmt.Sprint(today.Year())]
+	day := today.AddDate(0, 0, -1)
+	for {
+		date := day.Format("2006-01-02")
+		if holidays[date] {
+			day = day.AddDate(0, 0, -1)
+		} else {
+			break
+		}
+	}
+	weekday := day.Weekday()
+	switch weekday {
+	case time.Saturday:
+		day = day.AddDate(0, 0, -1)
+	case time.Sunday:
+		day = day.AddDate(0, 0, -2)
+	}
+	return day.Format("2006-01-02")
+}
+
+// GetNextTradingDay 返回下一个交易日string类型日期：YYYY-mm-dd
+func GetNextTradingDay() string {
+	today := time.Now()
+	holidays := chinaHolidays[fmt.Sprint(today.Year())]
+	day := today.AddDate(0, 0, 1)
+	for {
+		date := day.Format("2006-01-02")
+		if holidays[date] {
+			day = day.AddDate(0, 0, 1)
+		} else {
+			break
+		}
+	}
+	weekday := day.Weekday()
+	switch weekday {
+	case time.Saturday:
+		day = day.AddDate(0, 0, 2)
+	case time.Sunday:
+		day = day.AddDate(0, 0, 1)
+	}
+	return day.Format("2006-01-02")
+}
+
 // IsTradingDay 返回当期是否为交易日
 func IsTradingDay() bool {
 	today := time.Now()
