@@ -4195,8 +4195,8 @@ func HttpGet(url string, headers map[string]interface{}, timeout int64) (int, []
 // Http2Curl returns a CurlCommand corresponding to an http.Request
 func Http2Curl(req *http.Request) (string, error) {
 	var command []string
-	if req.URL == nil {
-		return "", fmt.Errorf("getCurlCommand: invalid request, req.URL is nil")
+	if req == nil || req.URL == nil {
+		return "", fmt.Errorf("getCurlCommand: invalid request, req or req.URL is nil")
 	}
 
 	command = append(command, "curl")
