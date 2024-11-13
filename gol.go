@@ -79,9 +79,69 @@ type Logger struct {
 	done      chan bool   // for savelog goroutine to exit
 }
 
+var levels = []string{
+	"OFF",
+	"PANIC",
+	"FATAL",
+	"ERROR",
+	"WARN",
+	"NOTIC",
+	"INFO",
+	"DEBUG",
+	"TRACE",
+	"ALL",
+}
+
+var flags = []string{
+	"Ldate",
+	"Ltime",
+	"Lmsec",
+	"Lstack",
+	"Lnolvl",
+	"Lnobrkt",
+	"Lfile",
+	"Llfile",
+	"Ljson",
+	"Lcolor",
+	"Lfcolor",
+	"Lutc",
+	"Ldefault",
+}
+
+func index(slice []string, str string) int {
+	for idx, val := range slice {
+		if val == str {
+			return idx
+		}
+	}
+	return -1
+}
+
 // new logger with default configurations
 func New() *Logger {
-	return NewLogger(os.Stderr, "", "", INFO, Ldefault)
+	var level, flag int
+	var prefix, watchfile string
+
+	if val, ok := os.LookupEnv("GOL_PREFIX"); ok {
+		prefix = val
+	}
+	if val, ok := os.LookupEnv("GOL_WATCHFILE"); ok {
+		watchfile = val
+	}
+	if val, ok := os.LookupEnv("GOL_LEVEL"); ok {
+		level = index(levels, val)
+		if level == -1 {
+			level = INFO
+		}
+	}
+	if val, ok := os.LookupEnv("GOL_FLAG"); ok {
+		flag = index(flags, val)
+		if flag == -1 {
+			flag = Ldefault
+		}
+	}
+
+	return NewLogger(os.Stderr, prefix, watchfile, level, flag)
 }
 
 // create logger with customized configurations
