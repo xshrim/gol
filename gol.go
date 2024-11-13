@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -128,14 +129,14 @@ func New() *Logger {
 	if val, ok := os.LookupEnv("GOL_WATCHFILE"); ok {
 		watchfile = val
 	}
-	if val, ok := os.LookupEnv("GOL_LEVEL"); ok {
-		level = index(levels, val)
+	if val, ok := os.LookupEnv("GOL_LEVEL"); ok && val != "" {
+		level = index(levels, strings.ToUpper(val))
 		if level == -1 {
 			level = INFO
 		}
 	}
-	if val, ok := os.LookupEnv("GOL_FLAG"); ok {
-		flag = index(flags, val)
+	if val, ok := os.LookupEnv("GOL_FLAG"); ok && val != "" {
+		flag = index(flags, strings.ToUpper(val[:1])+strings.ToLower(val[1:]))
 		if flag == -1 {
 			flag = Ldefault
 		}
