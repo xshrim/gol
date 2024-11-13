@@ -94,8 +94,10 @@ var levels = []string{
 }
 
 var flags = []string{
+	"",
 	"Ldate",
 	"Ltime",
+	"Ldefault",
 	"Lmsec",
 	"Lstack",
 	"Lnolvl",
@@ -106,7 +108,6 @@ var flags = []string{
 	"Lcolor",
 	"Lfcolor",
 	"Lutc",
-	"Ldefault",
 }
 
 func index(slice []string, str string) int {
@@ -120,7 +121,9 @@ func index(slice []string, str string) int {
 
 // new logger with default configurations
 func New() *Logger {
-	var level, flag int
+	level := INFO
+	flag := Ldefault
+
 	var prefix, watchfile string
 
 	if val, ok := os.LookupEnv("GOL_PREFIX"); ok {
@@ -130,15 +133,13 @@ func New() *Logger {
 		watchfile = val
 	}
 	if val, ok := os.LookupEnv("GOL_LEVEL"); ok && val != "" {
-		level = index(levels, strings.ToUpper(val))
-		if level == -1 {
-			level = INFO
+		if tmp := index(levels, strings.ToUpper(val)); tmp != -1 {
+			level = tmp
 		}
 	}
 	if val, ok := os.LookupEnv("GOL_FLAG"); ok && val != "" {
-		flag = index(flags, strings.ToUpper(val[:1])+strings.ToLower(val[1:]))
-		if flag == -1 {
-			flag = Ldefault
+		if tmp := index(flags, strings.ToUpper(val[:1])+strings.ToLower(val[1:])); tmp != -1 {
+			flag = tmp
 		}
 	}
 
