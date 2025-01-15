@@ -73,6 +73,110 @@ const hexs = "0123456789abcdef"
 // 	return b[bp:]
 // }
 
+func int2chinese(num int) string {
+	//1、数字为0
+	if num == 0 {
+		return "零"
+	}
+	var ans string
+	//数字
+	szdw := []string{"十", "百", "千", "万", "十万", "百万", "千万", "亿"}
+	//数字单位
+	sz := []string{"零", "一", "二", "三", "四", "五", "六", "七", "八", "九"}
+	res := make([]string, 0)
+
+	//数字单位角标
+	idx := -1
+	for num > 0 {
+		//当前位数的值
+		x := num % 10
+		//2、数字大于等于10
+		// 插入数字单位，只有当数字单位角标在范围内，且当前数字不为0 时才有效
+		if idx >= 0 && idx < len(szdw) && x != 0 {
+			res = append([]string{szdw[idx]}, res...)
+		}
+		//3、数字中间有多个0
+		// 当前数字为0，且后一位也为0 时，为避免重复删除一个零文字
+		if x == 0 && len(res) != 0 && res[0] == "零" {
+			res = res[1:]
+		}
+		// 插入数字文字
+		res = append([]string{sz[x]}, res...)
+		num /= 10
+		idx++
+	}
+	//4、个位数为0
+	if len(res) > 1 && res[len(res)-1] == "零" {
+		res = res[:len(res)-1]
+	}
+	//合并字符串
+	for i := 0; i < len(res); i++ {
+		ans = ans + res[i]
+	}
+	return ans
+}
+
+func int2roman(num int) string {
+	//创建映射列表
+	numsmap := map[int]string{
+		1:    "I",
+		4:    "IV",
+		5:    "V",
+		9:    "IX",
+		10:   "X",
+		40:   "XL",
+		50:   "L",
+		90:   "XC",
+		100:  "C",
+		400:  "CD",
+		500:  "D",
+		900:  "CM",
+		1000: "M",
+	}
+	//创建整数数组
+	numsint := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
+	results := []string{}
+	count := 0
+	//进入循环
+	for i := 0; i < len(numsint) && num != 0; i++ {
+		//判断当前数字是否比map中数值大
+		count = num / numsint[i]
+		//如果大，则减去当前值
+		num = num - count*numsint[i]
+		//并记录字符，注意这里用的是for循环
+		for count != 0 {
+			results = append(results, numsmap[numsint[i]])
+			//更新count值
+			count--
+		}
+	}
+	return strings.Join(results, "")
+}
+
+// intToCircledNumber 将整数转换为带圈的 Unicode 字符。
+// 支持 1 到 20 的整数，超出范围返回错误。
+func int2cnum(num int) string {
+	if num < 1 || num > 20 {
+		return ""
+	}
+
+	// Unicode 编码从 ① (U+2460) 到 ⑳ (U+2473) 是连续的
+	circledNum := rune(0x245F + num)
+	return string(circledNum)
+}
+
+// intToParenthesizedNumber 将整数转换为带括号的 Unicode 字符
+// 支持 1 到 20 的整数，超出范围返回错误。
+func int2pnum(num int) string {
+	if num < 1 || num > 20 {
+		return ""
+	}
+
+	// Unicode 编码从 ⑴ (U+2474) 到 ⑳ (U+2487) 是连续的
+	parenthesizedNum := rune(0x2473 + num)
+	return string(parenthesizedNum)
+}
+
 func toUpper(str string) string {
 	var dst []rune
 	for _, v := range str {
@@ -313,7 +417,7 @@ func mapi2maps(i interface{}) interface{} {
 	case map[interface{}]interface{}:
 		m2 := map[string]interface{}{}
 		for k, v := range x {
-			m2[k.(string)] = mapi2maps(v)
+			m2[fmt.Sprintf("%v", k)] = mapi2maps(v)
 		}
 		return m2
 	case []interface{}:
@@ -416,6 +520,12 @@ func tojson(dst []byte, v interface{}) []byte {
 			dst = tojson(dst, v)
 		}
 		dst = append(dst, '}')
+	case map[interface{}]interface{}:
+		// m2 := map[string]interface{}{}
+		// for k, v := range val {
+		// 	m2[fmt.Sprintf("%v", k)] = mapi2maps(v) // convert key to string
+		// }
+		return tojson(dst, mapi2maps(v))
 	case []map[string]interface{}:
 		dst = append(dst, '[')
 		for _, m := range val {
@@ -2867,6 +2977,28 @@ func Capitalize(str string) string {
 	return toCapitalize(str)
 }
 
+func Ch2Eng(str string) string {
+	var runes []rune
+	chars := map[rune]rune{'，': ',', '。': '.', '：': ':', '！': '!', '？': '?', '·': '`', '’': '\'', '”': '"', '（': ')', '）': ')', '《': '<', '》': '>', '【': ']', '】': ']'}
+	for _, r := range str {
+		if v, ok := chars[r]; ok {
+			runes = append(runes, v)
+		} else {
+			runes = append(runes, r)
+		}
+	}
+	return string(runes)
+}
+
+func StrOmit(str string, length int) string {
+	r := []rune(str)
+	if len(r) <= length {
+		return str
+	} else {
+		return string(r[:length-1]) + "..."
+	}
+}
+
 func StrAlign(str, placeholder, align string, length int) string {
 	str = strings.TrimSpace(strings.ReplaceAll(str, "\n", "\\n"))
 	if Strlen(str) >= length {
@@ -2931,6 +3063,152 @@ func ByteSize(str string) (uint64, error) {
 	val *= multiplier
 	return uint64(math.Ceil(val)), nil
 }
+
+func Seq(sample string, i int) string {
+	if i < 1 {
+		return ""
+	}
+
+	suffix := ""
+	if strings.HasSuffix(sample, ".") {
+		suffix = "."
+		sample = strings.TrimSuffix(sample, ".")
+	}
+
+	switch sample {
+	case "1":
+		return fmt.Sprintf("%d", i) + suffix
+	case "01":
+		return fmt.Sprintf("%02d", i) + suffix
+	case "001":
+		return fmt.Sprintf("%03d", i) + suffix
+	case "0001":
+		return fmt.Sprintf("%04d", i) + suffix
+	case "00001":
+		return fmt.Sprintf("%05d", i) + suffix
+	case "000001":
+		return fmt.Sprintf("%06d", i) + suffix
+	case "a":
+		return fmt.Sprintf("%c", i+96) + suffix
+	case "A":
+		return fmt.Sprintf("%c", i+64) + suffix
+	case "I":
+		return int2roman(i) + suffix
+	case "i":
+		return strings.ToLower(int2roman(i)) + suffix
+	case "一":
+		return int2chinese(i) + suffix
+	case "①":
+		return int2cnum(i) + suffix
+	case "⑴":
+		return int2pnum(i) + suffix
+	case "(1)":
+		return fmt.Sprintf("(%d)", i) + suffix
+	case "(01)":
+		return fmt.Sprintf("(%02d)", i) + suffix
+	case "(001)":
+		return fmt.Sprintf("(%03d)", i) + suffix
+	case "(0001)":
+		return fmt.Sprintf("(%04d)", i) + suffix
+	case "(00001)":
+		return fmt.Sprintf("(%05d)", i) + suffix
+	case "(000001)":
+		return fmt.Sprintf("(%06d)", i) + suffix
+	case "(a)":
+		return fmt.Sprintf("(%c)", i+96) + suffix
+	case "(A)":
+		return fmt.Sprintf("(%c)", i+64) + suffix
+	case "(I)":
+		return fmt.Sprintf("(%s)", int2roman(i)) + suffix
+	case "(i)":
+		return fmt.Sprintf("(%s)", strings.ToLower(int2roman(i))) + suffix
+	case "(一)":
+		return fmt.Sprintf("(%s)", int2chinese(i)) + suffix
+	default:
+		return fmt.Sprintf("%d", i)
+	}
+}
+
+func MemEst(num int) int {
+	sizes := []int{1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 80, 96, 128, 256, 512, 1024, 2048, 4096}
+
+	best := sizes[0]
+	mindist := num - best
+	if mindist < 0 {
+		mindist = 0 - mindist
+	}
+
+	for _, size := range sizes {
+		curdist := num - size
+		if curdist < 0 {
+			curdist = 0 - curdist
+		}
+
+		if curdist < mindist {
+			mindist = curdist
+			best = size
+		}
+	}
+
+	return best
+}
+
+func DiskEst(num int) int {
+	sizes := []int{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000}
+
+	num -= 90
+
+	best := sizes[0]
+	mindist := num - best
+	if mindist < 0 {
+		mindist = 0 - mindist
+	}
+
+	for _, size := range sizes {
+		curdist := num - size
+		if curdist < 0 {
+			curdist = 0 - curdist
+		}
+
+		if curdist < mindist {
+			mindist = curdist
+			best = size
+		}
+	}
+
+	return best
+}
+
+// func Index(str, sub string) []int {
+// 	var positions []int
+// 	if sub == "" {
+// 		return positions // 如果子串为空，返回空数组
+// 	}
+
+// 	strs := []rune(str)
+// 	subs := []rune(sub)
+
+// 	offset := 0
+// 	for i := range strs {
+// 		if i < offset {
+// 			continue
+// 		}
+
+// 		found := true
+// 		for j := range subs {
+// 			if strs[i+j] != subs[j] {
+// 				found = false
+// 				break
+// 			}
+// 		}
+// 		if found {
+// 			positions = append(positions, i)
+// 			offset = i + 1
+// 		}
+// 	}
+
+// 	return positions
+// }
 
 // func GroupSlice[T interface{}](slc []T, num int64) [][]T {
 // 	max := int64(len(slc))
@@ -3895,13 +4173,16 @@ func Exec(command string, args ...string) <-chan string {
 
 // wait until the time
 func WaitUntil(t string) {
-	ds := -1
-	tt := strings.Split(t, " ")
-	if len(tt) > 1 {
-		ds, _ = strconv.Atoi(tt[1])
+	datetime := strings.Split(t, " ")
+	var datestr, timestr string
+	if len(datetime) < 2 {
+		timestr = datetime[0]
+	} else {
+		datestr = datetime[0]
+		timestr = datetime[1]
 	}
 
-	ts := strings.Split(tt[0], ":")
+	ts := strings.Split(timestr, ":")
 	hour, _ := strconv.Atoi(ts[0])
 	minute := 0
 	second := 0
@@ -3914,19 +4195,30 @@ func WaitUntil(t string) {
 	t = fmt.Sprintf("%02d:%02d:%02d", hour, minute, second)
 
 	ct := time.Now().Local()
-	loc, _ := time.LoadLocation("Local")
 
-	if ds >= 0 {
-		if int(ct.Weekday()) <= ds {
-			ct = ct.Add(time.Hour * 24 * time.Duration(ds-int(ct.Weekday())))
-		} else {
-			ct = ct.Add(time.Hour * 24 * time.Duration(7+ds-int(ct.Weekday())))
+	year := ct.Year()
+	month := int(ct.Month())
+	day := ct.Day()
+	if datestr != "" {
+		ymd := strings.Split(datestr, "-")
+		year, _ = strconv.Atoi(ymd[0])
+		month = 1
+		day = 1
+
+		if len(ymd) > 1 {
+			month, _ = strconv.Atoi(ymd[1])
+		}
+		if len(ymd) > 2 {
+			day, _ = strconv.Atoi(ymd[2])
 		}
 	}
+	d := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
 
-	dt, _ := time.ParseInLocation("2006-01-02 15:04:05", fmt.Sprintf("%04d-%02d-%02d %s", ct.Year(), ct.Month(), ct.Day(), t), loc)
+	loc, _ := time.LoadLocation("Local")
 
-	if dt.Before(ct) {
+	dt, _ := time.ParseInLocation("2006-01-02 15:04:05", fmt.Sprintf("%s %s", d, t), loc)
+
+	for dt.Before(ct) {
 		dt = dt.Add(time.Hour * 24)
 	}
 
@@ -4247,4 +4539,40 @@ func Http2Curl(req *http.Request) (string, error) {
 	command = append(command, "--compressed")
 
 	return strings.Join(command, " "), nil
+}
+
+func TlsCheck(domain string) (string, string, string, string, float64, error) {
+	info := strings.Split(domain, ":")
+	domain = info[0]
+	port := "443"
+	if len(info) > 1 {
+		port = info[1]
+	}
+
+	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", domain, port), &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10})
+	if err != nil {
+		return "", "", "", "", 0, err
+		// return "", "", "", "", 0, fmt.Errorf("not support ssl certificate: %s", err.Error())
+	}
+
+	// err = conn.VerifyHostname(domain)
+	// if err != nil {
+	// 	return "", "", "", "", 0, fmt.Errorf("hostname doesn't match with certificate: %s", err.Error())
+	// }
+
+	for _, cert := range conn.ConnectionState().PeerCertificates {
+		// 检测服务器证书是否已经过期(CA证书过期时间会比服务器证书长)
+		if !cert.IsCA {
+			sn := fmt.Sprintf("%x", cert.SerialNumber)
+			issuer := cert.Issuer.CommonName
+			dnss := strings.Join(cert.DNSNames, ",")
+			expire := cert.NotAfter.Local().Format("2006-01-02 15:04:05")
+			remain := cert.NotAfter.Sub(time.Now()).Hours()
+			//version := conn.ConnectionState().Version
+			return sn, issuer, dnss, expire, remain, cert.VerifyHostname(domain)
+		}
+	}
+
+	return "", "", "", "", 0, nil
+
 }

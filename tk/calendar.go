@@ -200,6 +200,7 @@ var chinaHolidays = map[string]map[string]bool{
 	"2022": chinaHolidays2022,
 	"2023": chinaHolidays2023,
 	"2024": chinaHolidays2024,
+	"2025": chinaHolidays2025,
 }
 
 // chinaHolidays2021 2021年中国法定节假日
@@ -361,6 +362,42 @@ var chinaHolidays2024 = map[string]bool{
 	"2024-10-05": true,
 	"2024-10-06": true,
 	"2024-10-07": true,
+}
+
+var chinaHolidays2025 = map[string]bool{
+	// 元旦
+	"2025-01-01": true,
+	// 春节
+	"2025-01-28": true,
+	"2025-01-29": true,
+	"2025-01-30": true,
+	"2025-01-31": true,
+	"2025-02-01": true,
+	"2025-02-02": true,
+	"2025-02-03": true,
+	"2025-02-04": true,
+	// 清明节
+	"2025-04-04": true,
+	"2025-04-05": true,
+	"2025-04-06": true,
+	// 劳动节
+	"2025-05-01": true,
+	"2025-05-02": true,
+	"2025-05-03": true,
+	"2025-05-04": true,
+	"2025-05-05": true,
+	// 端午节
+	"2025-05-31": true,
+	// 中秋节
+	// 国庆日
+	"2025-10-01": true,
+	"2025-10-02": true,
+	"2025-10-03": true,
+	"2025-10-04": true,
+	"2025-10-05": true,
+	"2025-10-06": true,
+	"2025-10-07": true,
+	"2025-10-08": true,
 }
 
 // GetLatestTradingDay 返回最近一个交易日string类型日期：YYYY-mm-dd
