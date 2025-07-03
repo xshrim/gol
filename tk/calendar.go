@@ -470,14 +470,17 @@ func GetNextTradingDay() string {
 }
 
 // IsTradingDay 返回当期是否为交易日
-func IsTradingDay() bool {
-	today := time.Now()
-	weekday := today.Weekday()
+func IsTradingDay(day time.Time) bool {
+	if day.IsZero() {
+		day = time.Now()
+	}
+
+	weekday := day.Weekday()
 	if weekday == time.Saturday || weekday == time.Sunday {
 		return false
 	}
-	holidays := chinaHolidays[fmt.Sprint(today.Year())]
-	if holidays[today.Format("2006-01-02")] {
+	holidays := chinaHolidays[fmt.Sprint(day.Year())]
+	if holidays[day.Format("2006-01-02")] {
 		return false
 	}
 	return true
@@ -670,15 +673,16 @@ func isDayOfLastWeeekInTheMonth(now time.Time, weekNumber int) bool {
 	year := now.Year()
 	month := int(now.Month())
 	isLeap := isLeapYear(year)
-	if month == 2 {
+	switch month {
+	case 2:
 		if isLeap {
 			endDayOfMonth = time.Date(now.Year(), now.Month(), 29, 23, 59, 59, 1, time.UTC)
 		} else {
 			endDayOfMonth = time.Date(now.Year(), now.Month(), 28, 23, 59, 59, 1, time.UTC)
 		}
-	} else if month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12 {
+	case 1, 3, 5, 7, 8, 10, 12:
 		endDayOfMonth = time.Date(now.Year(), now.Month(), 31, 23, 59, 59, 1, time.UTC)
-	} else {
+	default:
 		endDayOfMonth = time.Date(now.Year(), now.Month(), 30, 23, 59, 59, 1, time.UTC)
 	}
 	_, lastWeekOfMonth := endDayOfMonth.ISOWeek()
@@ -956,7 +960,7 @@ func checkLunarDate(lunarYear, lunarMonth, lunarDay int, leapMonthFlag bool) err
 
 // 计算该月总天数
 func getMonthDays(lunarYeay int, month uint) int {
-	if (month > 31) || (month < 0) {
+	if month > 31 {
 		fmt.Println("error month")
 	}
 	// 0X0FFFF[0000 {1111 1111 1111} 1111]中间12位代表12个月，1为大月，0为小月
@@ -1026,11 +1030,12 @@ func chineseDayString(day int) string {
 	if day > 30 {
 		return ""
 	}
-	if day == 20 {
+	switch day {
+	case 20:
 		return "二十"
-	} else if day == 10 {
+	case 10:
 		return "初十"
-	} else {
+	default:
 		return chineseTen[day/10] + chineseNumber[n]
 	}
 }

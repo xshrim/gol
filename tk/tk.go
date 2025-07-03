@@ -3007,11 +3007,12 @@ func StrAlign(str, placeholder, align string, length int) string {
 	phnum := length - Strlen(str)
 	left := strings.Repeat(placeholder, phnum/2)
 	right := strings.Repeat(placeholder, phnum-phnum/2)
-	if align == "left" {
+	switch align {
+	case "left":
 		return str + left + right
-	} else if align == "right" {
+	case "right":
 		return left + right + str
-	} else {
+	default:
 		return left + str + right
 	}
 }
@@ -3043,8 +3044,7 @@ func ByteSize(str string) (uint64, error) {
 		for j := 0; j < len(sizeSuffixes); j++ {
 			base := string(sizeSuffixes[j])
 			// M, MB, or MiB are all valid.
-			switch suffix {
-			case base, base + "B", base + "iB":
+			if suffix == base || suffix == base+"B" || suffix == base+"iB" {
 				sz := 1 << uint(j*10)
 				multiplier = float64(sz)
 				break
@@ -3207,37 +3207,38 @@ func DiskEst(num int) int {
 // 		}
 // 	}
 
-// 	return positions
-// }
+//		return positions
+//	}
 
-// func GroupSlice[T interface{}](slc []T, num int64) [][]T {
-// 	max := int64(len(slc))
-// 	//判断数组大小是否小于等于指定分割大小的值，是则把原数组放入二维数组返回
-// 	if max <= num {
-// 		return [][]T{slc}
-// 	}
-// 	//获取应该数组分割为多少份
-// 	var quantity int64
-// 	if max%num == 0 {
-// 		quantity = max / num
-// 	} else {
-// 		quantity = (max / num) + 1
-// 	}
-// 	//声明分割好的二维数组
-// 	var segments = make([][]T, 0)
-// 	//声明分割数组的截止下标
-// 	var start, end, i int64
-// 	for i = 1; i <= quantity; i++ {
-// 		end = i * num
-// 		if i != quantity {
-// 			segments = append(segments, slc[start:end])
-// 		} else {
-// 			segments = append(segments, slc[start:])
-// 		}
-// 		start = i * num
-// 	}
-// 	return segments
-// }
+// split a slice into multiple smaller slices
+func GroupSlice(slc []interface{}, num int64) [][]interface{} {
+	max := int64(len(slc))
+
+	if max <= num {
+		return [][]interface{}{slc}
+	}
+
+	var quantity int64
+	if max%num == 0 {
+		quantity = max / num
+	} else {
+		quantity = (max / num) + 1
+	}
+
+	var segments = make([][]interface{}, 0)
+
+	var start, end, i int64
+	for i = 1; i <= quantity; i++ {
+		end = i * num
+		if i != quantity {
+			segments = append(segments, slc[start:end])
+		} else {
+			segments = append(segments, slc[start:])
+		}
+		start = i * num
+	}
+	return segments
+}
 
 // func SortedKeys[T interface{}](m map[string]T) []string {
 // 	keys := make([]string, 0, len(m))
@@ -4120,7 +4121,7 @@ func Hash(data []byte) string {
 }
 
 // generate md5 code for data
-func MD5(data []byte) string {
+func Md5(data []byte) string {
 	sum := md5.Sum(data)
 	return fmt.Sprintf("%x", sum)
 }
@@ -4228,6 +4229,86 @@ func WaitUntil(t string) {
 	}
 }
 
+func TimeConvert(kind, unit string, val ...interface{}) (interface{}, error) {
+	var t time.Time
+	if len(val) > 0 && val[0] != nil {
+		var ts int64
+		v := val[0]
+		if val, ok := v.(float64); ok {
+			ts = int64(val)
+		} else if iv, err := strconv.ParseInt(fmt.Sprintf("%v", v), 10, 64); err == nil {
+			ts = iv
+		}
+		if ts > 0 {
+			length := len(strconv.FormatInt(ts, 10))
+			switch {
+			case length <= 10:
+				t = time.Unix(ts, 0)
+			case length > 10 && length <= 13:
+				t = time.UnixMilli(ts)
+			case length > 13 && length <= 16:
+				t = time.UnixMicro(ts)
+			case length > 16:
+				t = time.Unix(0, ts)
+			}
+		} else {
+			if ft, err := time.ParseInLocation("15:04:05", fmt.Sprintf("%v", v), time.Local); err != nil {
+				return "", err
+			} else {
+				t = ft
+			}
+		}
+	} else {
+		t = time.Now().Local()
+	}
+
+	switch kind {
+	case "time":
+		switch unit {
+		case "s", "sec", "second":
+			return t.Format("15:04:05"), nil
+		case "ms", "msec", "millisecond":
+			return t.Format("15:04:05.000"), nil
+		case "us", "usec", "microsecond":
+			return t.Format("15:04:05.000000"), nil
+		case "ns", "nsec", "nanosecond":
+			return t.Format("15:04:05.000000000"), nil
+		default:
+			return t.Format("15:04:05"), nil
+		}
+	case "date":
+		return t.Format("2006-01-02"), nil
+	case "datetime":
+		switch unit {
+		case "s", "sec", "second":
+			return t.Format("2006-01-02 15:04:05"), nil
+		case "ms", "msec", "millisecond":
+			return t.Format("2006-01-02 15:04:05.000"), nil
+		case "us", "usec", "microsecond":
+			return t.Format("2006-01-02 15:04:05.000000"), nil
+		case "ns", "nsec", "nanosecond":
+			return t.Format("2006-01-02 15:04:05.000000000"), nil
+		default:
+			return t.Format("2006-01-02 15:04:05"), nil
+		}
+	case "ts", "timestamp":
+		switch unit {
+		case "s", "sec", "second":
+			return t.Unix(), nil
+		case "ms", "msec", "millisecond":
+			return t.UnixMilli(), nil
+		case "us", "usec", "microsecond":
+			return t.UnixMicro(), nil
+		case "ns", "nsec", "nanosecond":
+			return t.UnixNano(), nil
+		default:
+			return t.Unix(), nil
+		}
+	default:
+		return "", fmt.Errorf("unsupported time kind: %s", kind)
+	}
+}
+
 // if the string is an ip address
 func IsIP(str string) bool {
 	matched, _ := regexp.MatchString(`^^((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})(\.((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})){3}$`, str)
@@ -4327,6 +4408,43 @@ func ip_inc(ip net.IP) net.IP {
 	return ip
 }
 
+func ParseStruct(s interface{}) ([]byte, error) {
+	val := reflect.ValueOf(s)
+
+	// Ensure we're dealing with a struct
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem() // Dereference the pointer if it's a pointer to a struct
+	}
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("input is not a struct or a pointer to a struct")
+	}
+
+	type StructInfo struct {
+		Name  string      `json:"name"`
+		Type  string      `json:"type"`
+		Tag   string      `json:"tag,omitempty"`
+		Value interface{} `json:"value"`
+	}
+
+	typeOfS := val.Type()
+	var fieldsInfo []StructInfo
+
+	for i := 0; i < val.NumField(); i++ {
+		field := typeOfS.Field(i)
+		fieldValue := val.Field(i)
+
+		info := StructInfo{
+			Name:  field.Name,
+			Type:  field.Type.String(),
+			Tag:   string(field.Tag), // Convert StructTag to string
+			Value: fieldValue.Interface(),
+		}
+		fieldsInfo = append(fieldsInfo, info)
+	}
+
+	return json.MarshalIndent(fieldsInfo, "", "  ")
+}
+
 // get ips from range
 func GetIPsInRange(ipstr string) []string {
 	var ips []string
@@ -4402,6 +4520,131 @@ func FuncName(i interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
 
+// string anonymization
+func Desensitize(str string) string {
+	dstr := str
+
+	// 定义所有需要脱敏的正则表达式及其替换占位符
+	// 注意：匹配顺序很重要，通常从更具体的模式到更通用的模式
+	// 例如，身份证号（更具体）应在通用数字串（更通用）之前匹配
+
+	// 1. 身份证号 (中国大陆18位身份证号)
+	// 15位: [1-9]\d{7}((0\d)|(1[0-2]))(([0|1|2]\d)|3[0-1])\d{3}
+	// 18位: [1-9]\d{5}[1-9]\d{3}((0\d)|(1[0-2]))(([0|1|2]\d)|3[0-1])\d{3}[\dxX]
+	reIDCard := regexp.MustCompile(`\b[1-9]\d{5}(18|19|([23]\d))\d{2}((0\d)|(10|11|12))(([0|1|2]\d)|3[0-1])\d{3}[\dxX]\b`)
+	dstr = reIDCard.ReplaceAllString(dstr, "[ID_CARD_NUM]")
+
+	// 2. 银行卡号 (13-19位数字，且通常是连续的数字串)
+	// 通常，银行卡号没有固定的前缀或后缀，所以匹配连续的数字串
+	reBankCard := regexp.MustCompile(`\b\d{13,19}\b`) // 匹配13到19位数字
+	dstr = reBankCard.ReplaceAllStringFunc(dstr, func(s string) string {
+		// 避免误伤其他长数字串，可以增加一些启发式规则
+		// 例如：如果这个数字串附近没有“卡号”、“账户”等关键词，则不替换
+		// 或者，如果它同时匹配到日期、时间等其他更具体的正则，则让更具体的正则优先处理
+		// 这里简化处理，直接替换
+		return "[BANK_CARD_NUM]"
+	})
+
+	// 3. IP 地址 (IPv4)
+	reIP := regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
+	dstr = reIP.ReplaceAllString(dstr, "[IP_ADDR]")
+
+	// reIPv6 := regexp.MustCompile(`\b((([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:))|(([0-9a-fA-F]{1,4}:){6}(:[0-9a-fA-F]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-fA-F]{1,4}:){5}(((:[0-9a-fA-F]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-fA-F]{1,4}:){4}(((:[0-9a-fA-F]{1,4}){1,3})|((:[0-9a-fA-F]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){3}(((:[0-9a-fA-F]{1,4}){1,4})|((:[0-9a-fA-F]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){2}(((:[0-9a-fA-F]{1,4}){1,5})|((:[0-9a-fA-F]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){1}(((:[0-9a-fA-F]{1,4}){1,6})|((:[0-9a-fA-F]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-fA-F]{1,4}){1,7})|((:[0-9a-fA-F]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\b`)
+	// dstr = reIPv6.ReplaceAllString(dstr, "[IPv6_ADDR]")
+
+	// 4. Mac 地址
+	reMac := regexp.MustCompile(`\b([0-9a-fA-F]{2}([.:-])){5}[0-9a-fA-F]{2}\b`)
+	dstr = reMac.ReplaceAllString(dstr, "[MAC_ADDR]")
+
+	// 4. 日期 (多种常见格式，例如 YYYY-MM-DD, YYYY/MM/DD)
+	reDate := regexp.MustCompile(`\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b`)
+	dstr = reDate.ReplaceAllString(dstr, "[DATE]")
+
+	// 5. 时间 (H:M:S 或 H:M:S-ms，带或不带时区偏移)
+	reTime := regexp.MustCompile(`\b\d{2}:\d{2}:\d{2}(?:[-,+][\d]{3,4})?(?:[\d]{2})?\b`)
+	dstr = reTime.ReplaceAllString(dstr, "[TIME]")
+
+	reDateTime := regexp.MustCompile(`\b\d{4}[-/]\d{1,2}[-/]\d{1,2}T\d{2}:\d{2}:\d{2}(?:[-,+][\d]{3,4})?(?:[\d]{2})?\b`)
+	dstr = reDateTime.ReplaceAllString(dstr, "[DATETIME]")
+
+	// 6. 时间戳 (Unix timestamp，秒级或毫秒级) ---
+	// 匹配10位数字（秒级）或13位数字（毫秒级）的时间戳
+	// 注意：这可能与某些长ID号冲突，所以如果ID号有固定前缀，最好使用更精确的ID正则
+	reTimestamp := regexp.MustCompile(`\b\d{10}(?:\d{3})?\b`) // 匹配10位或13位数字
+	dstr = reTimestamp.ReplaceAllStringFunc(dstr, func(s string) string {
+		// 结合上下文判断，例如前面有 "createTime": 或 "timestamp": 等关键词
+		// 这是一个简单的例子，实际可能需要更复杂的逻辑
+		// if strings.Contains(log, `"createTime":`+s) || strings.Contains(log, `"timestamp":`+s) {
+		//     return "[TIMESTAMP]"
+		// }
+		// 为了简单，这里直接替换符合长度的数字串
+		return "[TIMESTAMP]"
+	})
+
+	// 7. 电话号码 (常见的手机号码格式)
+	rePhone := regexp.MustCompile(`\b(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})\b`)
+	dstr = rePhone.ReplaceAllString(dstr, "[PHONE_NUM]")
+
+	// 8. 邮箱地址
+	reEmail := regexp.MustCompile(`\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b`)
+	dstr = reEmail.ReplaceAllString(dstr, "[EMAIL_ADDR]")
+
+	// 9. Token / API Key (非常通用，需要根据实际Token格式调整)
+	// 示例：Base64编码的字符串 (由大小写字母、数字、+、/ 组成，末尾可能有=)
+	// 或 UUID 格式（UUID已在通用ID中处理）
+	// 通常Token会非常长，且可能包含特殊字符
+	reToken := regexp.MustCompile(`\b[a-zA-Z0-9+/=_-]{32,128}\b`) // 匹配32到128位Base64或类似Token
+	// 还可以匹配特定的前缀：例如 "Bearer\s+[a-zA-Z0-9+/=_-]+"
+	// reAPIKey := regexp.MustCompile(`\b(?:API_KEY|TOKEN|SECRET)[=:]\s*([a-zA-Z0-9+/=_-]{16,})\b`)
+	dstr = reToken.ReplaceAllString(dstr, "[TOKEN]")
+
+	// 10. 姓名 (简单的中文姓名，2-4个汉字)
+	// 这是非常基础的匹配，实际情况中姓名识别非常复杂
+	// 放弃识别人名
+	// reName := regexp.MustCompile(`\p{Han}{2,4}[0-9]{0,2}`)
+	// dstr = reName.ReplaceAllStringFunc(dstr, func(s string) string {
+	// 	commonWords := map[string]bool{
+	// 		"失败": true, "成功": true, "错误": true, "信息": true, "用户": true,
+	// 		"创建": true, "更新": true, "删除": true, "查询": true, "服务": true,
+	// 		"测试": true, "系统": true, "接口": true, "任务": true,
+	// 	}
+	// 	if commonWords[s] {
+	// 		return s
+	// 	}
+	// 	return "[NAME]"
+	// })
+
+	// 11. 编号/ID (通用数字序列或UUID) - 放到较后，避免与银行卡号等冲突
+	// UUID 格式
+	reUUID := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)
+	dstr = reUUID.ReplaceAllString(dstr, "[UUID]")
+
+	// 查找方括号里的数字（例如线程ID，行号等）
+	// 不替换线程ID, 行号等，避免误伤
+	// reNumInBrackets := regexp.MustCompile(`\[\d+\]`)
+	// dstr = reNumInBrackets.ReplaceAllString(dstr, "[NUM_ID]")
+
+	// 查找引号内的数字串 (例如 "logisticsNumber":"SF0269595341663")
+	// 注意：这可能与银行卡号重叠，因此银行卡号的正则必须优先匹配
+	reNumInQuotes := regexp.MustCompile(`"[a-zA-Z]*\d{5,}[a-zA-Z]*"`) // 匹配引号内包含5位以上数字的字符串
+	dstr = reNumInQuotes.ReplaceAllString(dstr, `"[GENERIC_NUM_ID]"`)
+
+	// 查找通用长数字串（例如订单号、客户ID等），避免与日期时间、电话、卡号重叠
+	// 放在最后，作为兜底，且避免误伤。
+	// 这里更倾向于替换独立存在的长数字串
+	reLongNum := regexp.MustCompile(`\b\d{5,}\b`) // 匹配5位或更长的连续数字
+	dstr = reLongNum.ReplaceAllStringFunc(dstr, func(s string) string {
+		// 再次检查是否可能是IP、日期、时间的一部分，或者已经被其他更具体的正则处理过
+		// 由于正则匹配是从左到右进行的，并且我们是按顺序替换的，
+		// 理论上前面更具体的正则会优先处理。
+		// 这里可以增加一个判断，例如，如果这个数字串是已知的常见数字（如端口号），则不替换。
+		// 简单起见，这里直接替换
+		return "[LONG_NUM]"
+	})
+
+	return dstr
+}
+
 // parse url params
 func UrlParams(rawUrl string) (map[string][]string, error) {
 	stUrl, err := url.Parse(rawUrl)
@@ -4448,6 +4691,9 @@ func request(method, url string, headers map[string]interface{}, payload []byte,
 // get http request header
 func HttpHeader(method, url string, headers map[string]interface{}, payload []byte, timeout time.Duration) (header http.Header, err error) {
 	resp, err := request(method, url, headers, payload, timeout)
+	if err != nil {
+		return nil, nil
+	}
 	defer resp.Body.Close()
 
 	header = resp.Header
@@ -4462,6 +4708,9 @@ func HttpRequest(method, url string, headers map[string]interface{}, payload []b
 	}(time.Now())
 
 	resp, err := request(method, url, headers, payload, timeout)
+	if err != nil {
+		return 0, 0, nil, err
+	}
 	defer resp.Body.Close()
 
 	response, err = ioutil.ReadAll(resp.Body)

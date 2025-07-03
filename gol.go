@@ -1422,11 +1422,16 @@ func (l *Logger) lvcheck(lv int) bool {
 // save log to disk
 func (l *Logger) saveLog() {
 	for {
+		end := false
 		select {
 		case data := <-l.bufchan:
 			l.saver.save([]byte(data))
 		case <-l.done:
+			end = true
 			close(l.bufchan)
+		}
+
+		if end {
 			break
 		}
 	}
